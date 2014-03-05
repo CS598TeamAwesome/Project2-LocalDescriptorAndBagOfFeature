@@ -19,13 +19,19 @@ int main(int argc, char **argv){
     double s2[] = {4, 5, 18};
     double s3[] = {2, 3, 28};
     double s4[] = {3, 4, 38};
-    double s5[] = {4, 5, 48};
+    double s5[] = {11, 2, 22};
+    double s6[] = {29, 5, 33};
+    double s7[] = {13, 50, 19};
+    double s8[] = {7, 40, 48};
 
     vector<double> vs1(s1, s1+len);
     vector<double> vs2(s2, s2+len);
     vector<double> vs3(s3, s3+len);
     vector<double> vs4(s4, s4+len);
     vector<double> vs5(s5, s5+len);
+    vector<double> vs6(s6, s6+len);
+    vector<double> vs7(s7, s7+len);
+    vector<double> vs8(s8, s8+len);
 
     vector<vector<double>> samples;
     samples.push_back(vs1);
@@ -33,11 +39,24 @@ int main(int argc, char **argv){
     samples.push_back(vs3);
     samples.push_back(vs4);
     samples.push_back(vs5);
+    samples.push_back(vs6);
+    samples.push_back(vs7);
+    samples.push_back(vs8);
 
-    vector<vector<double>> centers = kmeans(samples, 2);
+    vector<int> labels;
+    vector<vector<double>> centers;
+
+    double compactness = kmeans(samples, 5, labels, centers, 100);
+    std::cout << compactness << std::endl;
+
+    //print out bin labels for samples
+    for(int& i : labels){
+        std::cout << i << " ";
+    }
+    std::cout << std::endl;
 
     //print out cluster centers
-    for(int i = 0; i < 2; i++){
+    for(int i = 0; i < 5; i++){
         std::cout << "cluster " << i << ": ";
         for(double& d : centers[i]){
             std::cout << d << ", ";

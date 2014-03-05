@@ -36,42 +36,46 @@ double euclidean_distance(const std::vector<double> &v1, const std::vector<doubl
 /**
  * @brief LocalDescriptorAndBagOfFeature::kmeans - computes K cluster centers for given samples
  * @param input -- the samples, a vector of vector double -- assumed to be of equal length
+ *      ... this is pass by value, because we rearrange elements pseudorandomly in generating the initial seeding
  * @param K -- the number of clusters to divide them into
- * @return a vector of the K cluster centers
+ * @param labels -- the bin labels for each sample
+ * @param centers -- the mean vectors for each cluster
+ * @return a vector of the K cluster centers, a vector of bin labels each sample belongs in, the compactness score for the clustering
  *
  * Bare bones implementation.
  * - Assigns initial distribution using mod on index.
  * - Runs until local minimum is reached.
  * - Uses Euclidean distance
  */
-std::vector<std::vector<double>> LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> &input, int K){
+double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers){
     int sample_ct = input.size();
-
-    //1. assign vectors to bins
-    std::vector<int> current_bins(input.size());
-    for(int i = 0; i < sample_ct; i++){
-        current_bins[i] = i%K; //initial bin assignments, fixed strategy, completely arbitrary, very easy to code
-    }
-
-    //x. initial setup for computing mean vector for each bin
-    std::vector<bin_info> totals(K);
-
     int dim = input[0].size(); //dimension of samples, maybe cleaner to pass this in
 
-    //initialize bin size, sum, and mean
+    //1.initial seeding of cluster centers
+    std::vector<bin_info> totals(K);
+
     for(bin_info& binfo : totals){
         binfo.size = 0;
         binfo.sum.resize(dim);
         binfo.mean.resize(dim);
     }
 
-    //determine totals for initial distribution
-    for(int i = 0; i < sample_ct; i++){
-        int bin_index = current_bins[i];
+    //pick K random samples to act as centers
+    for(int i = 0; i < K; i++){
+        //pick random sample in window from i to end
+        int index = i + std::rand()%(sample_ct-i);
 
-        //add the vector to the total for the bin
-        vector_add(totals[bin_index].sum, input[i]);
-        totals[bin_index].size++;
+        //assign the sample as a cluster center
+        std::vector<double> v(input[index]);
+        totals[i].mean = v;
+
+        //swap chosen sample into the current index to avoid collision (choosing the same sample twice)
+        std::swap(input[index], input[i]);
+    }
+
+    std::vector<int> current_bins(input.size());
+    for(int i = 0; i < sample_ct; i++){
+        current_bins[i] = -1;
     }
 
     bool recompute = true;
@@ -79,20 +83,11 @@ std::vector<std::vector<double>> LocalDescriptorAndBagOfFeature::kmeans(std::vec
     while(recompute){
         iteration_ct++;
 
-        //2. compute bin means
-        for(bin_info& binfo : totals){
-            for(int i = 0; i < dim; i++){
-                binfo.mean[i] = binfo.sum[i]/binfo.size;
-            }
-        }
-
-        //3. compare each vector to each bin mean and note most similar (euclidean distance)
+        //2. compare each sample to each bin mean and note most similar (euclidean distance)
         std::vector<int> new_bins(sample_ct);
-
         for(int i = 0; i < sample_ct; i++){
-
             int nearest_bin = 0;
-            double nearest_distance = euclidean_distance(input[0], totals[0].mean);
+            double nearest_distance = euclidean_distance(input[i], totals[0].mean);
 
             for(int j = 0; j < K; j++){
                 double distance = euclidean_distance(input[i], totals[j].mean);
@@ -107,13 +102,15 @@ std::vector<std::vector<double>> LocalDescriptorAndBagOfFeature::kmeans(std::vec
             new_bins[i] = nearest_bin;
         }
 
+        //3. move each sample to bin with closest center
         recompute = false;
-        //4. move all vectors to most similar bin
         for(int i = 0; i < sample_ct; i++){
             if(new_bins[i] != current_bins[i]){
-                //remove vector from current bin
-                totals[current_bins[i]].size--;
-                vector_subtract(totals[current_bins[i]].sum, input[i]);
+                if(current_bins[i] != -1){
+                    //remove vector from current bin
+                    totals[current_bins[i]].size--;
+                    vector_subtract(totals[current_bins[i]].sum, input[i]);
+                }
 
                 //put vector into new bin
                 totals[new_bins[i]].size++;
@@ -123,15 +120,75 @@ std::vector<std::vector<double>> LocalDescriptorAndBagOfFeature::kmeans(std::vec
                 recompute = true; //state changed, so run another iteration
             }
         }
+
+        //4. recompute mean for new centers
+        for(bin_info& binfo : totals){
+            for(int i = 0; i < dim; i++){
+                binfo.mean[i] = binfo.sum[i]/binfo.size;
+            }
+        }
     }
 
-    //5. local minimum reached, return a list of cluster centers
-    std::vector<std::vector<double>> centers;
+    //5. local minimum reached
 
-    //pull the means out from the vector of bin_infos
+    //set cluster centers: pull the means out from the vector of bin_infos
+    centers.clear();
     for(bin_info& binfo : totals){
         centers.push_back(binfo.mean);
     }
 
-    return centers;
+    //set labels
+    labels.clear();
+    for(int& i: current_bins){
+        labels.push_back(i);
+    }
+
+    //6. compute and return compactness:
+    // -- which we will define as average euclidean distance between each sample and the center of its cluster
+    double sum = 0.0;
+    for(int i = 0; i < sample_ct; i++){
+        double distance = euclidean_distance(input[i], centers[labels[i]]);
+        sum += distance*distance; //unsure if squaring here is necessary
+    }
+    //some measures also divide the sum by number of samples
+    sum /= sample_ct;
+
+    return sum;
+}
+
+/**
+ * @brief LocalDescriptorAndBagOfFeature::kmeans
+ *  -- run kmeans for N trials and return the best one
+ */
+double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, int trials){
+    //initialize best results
+    std::vector<std::vector<double>> best_centers;
+    std::vector<int> best_labels;
+    double best_compactness = kmeans(input, K, best_labels, best_centers); //first trial
+
+    for(int i = 1; i < trials; i++){
+        std::vector<std::vector<double>> current_centers;
+        std::vector<int> current_labels;
+        double current_compactness = kmeans(input, K, current_labels, current_centers);
+
+        if(current_compactness < best_compactness){
+            best_compactness = current_compactness;
+            best_centers = current_centers;
+            best_labels = current_labels;
+        }
+    }
+
+    //set cluster centers: pull the means out from the vector of bin_infos
+    centers.clear();
+    for(std::vector<double>& bin_mean : best_centers){
+        centers.push_back(bin_mean);
+    }
+
+    //set labels
+    labels.clear();
+    for(int& i: best_labels){
+        labels.push_back(i);
+    }
+
+    return best_compactness;
 }

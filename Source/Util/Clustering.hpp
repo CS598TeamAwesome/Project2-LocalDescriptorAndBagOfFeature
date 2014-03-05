@@ -5,9 +5,13 @@
 #include <array>
 #include <functional>
 #include <assert.h>
+#include <stdlib.h>
 
 namespace LocalDescriptorAndBagOfFeature {
-    //input is a vector of the samples (each a vector<double>) to cluster
-    //k is the number of clusters
-    std::vector<std::vector<double>> kmeans(std::vector<std::vector<double>> &input, int k);
+
+    //single run with randomized initial centers
+    double kmeans(std::vector<std::vector<double>> input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers);
+    //multiple run, returning the best
+    double kmeans(const std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, int trials);
+
 }
