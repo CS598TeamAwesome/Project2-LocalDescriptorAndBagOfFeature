@@ -13,6 +13,7 @@ set(HEADERS)
 
 add_subdirectory(Extraction)
 add_subdirectory(Util)
+add_subdirectory(BagOfFeatures)
 
 add_library(LocalDescriptorAndBagOfFeature ${SOURCE} ${HEADERS})
 target_link_libraries(LocalDescriptorAndBagOfFeature ${OpenCV_LIBS})
