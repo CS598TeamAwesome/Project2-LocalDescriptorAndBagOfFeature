@@ -1,11 +1,13 @@
 set(SOURCE
     ${SOURCE}
     ${CMAKE_CURRENT_SOURCE_DIR}/Clustering.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Dog.cpp
     PARENT_SCOPE
 )
 
 set(HEADERS
     ${HEADERS}
     ${CMAKE_CURRENT_SOURCE_DIR}/Clustering.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Dog.hpp
     PARENT_SCOPE
 )
