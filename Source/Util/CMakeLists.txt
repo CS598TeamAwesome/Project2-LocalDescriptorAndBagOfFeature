@@ -9,5 +9,6 @@ set(HEADERS
     ${HEADERS}
     ${CMAKE_CURRENT_SOURCE_DIR}/Clustering.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Dog.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Types.hpp
     PARENT_SCOPE
 )
