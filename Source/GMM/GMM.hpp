@@ -23,7 +23,6 @@ namespace LocalDescriptorAndBagOfFeature
             
         private:                        
             static double ComputeWeightedGaussian(const cv::Mat &x, WeightedGaussian wg);
-            static double ComputeWeightedGaussian(const cv::Mat &x, double weight, const cv::Mat &mean, const cv::Mat &covariance);
             
             std::vector<WeightedGaussian> _Gaussians;
             

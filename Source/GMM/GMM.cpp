@@ -22,14 +22,10 @@ using namespace LocalDescriptorAndBagOfFeature;
 
 inline double GMM::ComputeWeightedGaussian(const cv::Mat &x, WeightedGaussian wg)
 {
-    return GMM::ComputeWeightedGaussian(x, 
-                                        std::get<0>(wg),
-                                        std::get<1>(wg),
-                                        std::get<2>(wg));
-}
-
-inline double GMM::ComputeWeightedGaussian(const cv::Mat &x, double weight, const cv::Mat &mean, const cv::Mat &covariance)
-{
+    double weight;
+    cv::Mat mean, covariance;
+    std::tie(weight, mean, covariance) = wg;
+    
     cv::Mat precision;
     cv::invert(covariance, precision);
     
