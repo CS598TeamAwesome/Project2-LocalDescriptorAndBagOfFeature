@@ -1,14 +1,16 @@
+#pragma once
 #include <vector>
+#include "../Util/Types.hpp"
 
 namespace LocalDescriptorAndBagOfFeature 
-{
+{    
     class GMM
     {
         public:
             GMM(int numGaussians);
             
-            void Train(const std::vector<std::vector<std::vector<double>>> &bof);
-            std::vector<double> Supervector(const std::vector<std::vector<double>> &bof);
+            void Train(const FeatureSet &featureSet);
+            std::vector<double> Supervector(const BagOfFeatures &bof);
             
             int NumGaussians(void) const;
             
