@@ -1,7 +1,7 @@
 /*
  *
  * EM: 
- * pick starting a, u and C for each G_k
+ * pick starting a, u and C for each G_k (can use k-means for this somehow)
  *
  * update:
  * a_k = n_k / n
@@ -20,23 +20,36 @@
 
 using namespace LocalDescriptorAndBagOfFeature;
 
-double GMM::ComputeWeightedGaussian(const cv::Mat &x, WeightedGaussian wg)
+WeightedGaussian::WeightedGaussian(double weight, const cv::Mat &mean, const cv::Mat &covariance)
+    : _Weight(weight), _Mean(mean.clone()), _Covariance(covariance.clone())
 {
-    double weight;
-    cv::Mat mean, covariance;
-    std::tie(weight, mean, covariance) = wg;
     
-    cv::Mat precision = covariance.inv();    
-    double outter = std::sqrt(cv::determinant(precision) / 2.0 * M_PI);
+}
+
+double WeightedGaussian::operator ()(const cv::Mat &x) const
+{    
+    cv::Mat precision = _Covariance.inv();    
+    double outer = std::sqrt(cv::determinant(precision) / 2.0 * M_PI);
     
-    cv::Mat meanDist = x - mean;    
+    cv::Mat meanDist = x - _Mean;    
     cv::Mat symmetricProduct = meanDist.t() * precision * meanDist; // This is a "1x1" matrix e.g. a scalar value
     double inner = symmetricProduct.at<double>(0,0) / -2.0;
     
-    return weight * outter * std::exp(inner);
+    return _Weight * outer * std::exp(inner);
+}
+
+GMM::GMM(int num)
+    : _Gaussians(num)
+{
+    
+}
+
+void GMM::Train(const FeatureSet &featureSet)
+{
+    
 }
 
 double GMM::operator ()(const cv::Mat &x) const
 {
-    return std::accumulate(_Gaussians.begin(), _Gaussians.end(), 0, [&x](double val, WeightedGaussian wg) { return val + ComputeWeightedGaussian(x, wg); });
+    return std::accumulate(_Gaussians.begin(), _Gaussians.end(), 0, [&x](double val, WeightedGaussian wg) { return val + wg(x); });
 }

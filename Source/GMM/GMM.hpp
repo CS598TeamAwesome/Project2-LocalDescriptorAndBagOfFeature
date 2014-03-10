@@ -6,26 +6,37 @@
 
 namespace LocalDescriptorAndBagOfFeature 
 {   
-    // Weighted gaussian is defined as a (weight, mean vector, covariance matrix)
-    typedef std::tuple<double, cv::Mat, cv::Mat> WeightedGaussian; 
+    class WeightedGaussian
+    {
+        public:
+            WeightedGaussian(void);
+            WeightedGaussian(double weight, const cv::Mat &mean, const cv::Mat &covariance);
+            
+            double operator ()(const cv::Mat &x) const;
+            
+            double &Weight(void) { return _Weight; }
+            cv::Mat &Mean(void) { return _Mean; }
+            cv::Mat &Covariance(void) { return _Covariance; }
+            
+        private:
+            double _Weight;
+            cv::Mat _Mean;
+            cv::Mat _Covariance;
+    };
     
     class GMM
     {
         public:
-            GMM(int numGaussians);
+            GMM(int num);
             
             void Train(const FeatureSet &featureSet);
-            std::vector<double> Supervector(const BagOfFeatures &bof);
+            std::vector<double> Supervector(const BagOfFeatures &bof) const;
             
-            int NumGaussians(void) const;
+            int NumGaussians(void) const { return _Gaussians.size(); }
             
             double operator ()(const cv::Mat &x) const;
             
-        private:                        
-            static double ComputeWeightedGaussian(const cv::Mat &x, WeightedGaussian wg);
-            
+        private:                                    
             std::vector<WeightedGaussian> _Gaussians;
-            
-            int _NumGaussians;
     };
 }
