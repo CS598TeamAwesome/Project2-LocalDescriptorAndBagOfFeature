@@ -41,8 +41,8 @@ double WeightedGaussian::operator ()(const cv::Mat &x) const
     return _Weight * outer * std::exp(inner);
 }
 
-GMM::GMM(int num)
-    : _Gaussians(num)
+GMM::GMM(int num, double convergenceThreshold)
+    : _Gaussians(num), _ConvergenceThreshold(convergenceThreshold)
 {
     
 }
@@ -62,14 +62,15 @@ void GMM::Train(const FeatureSet &featureSet, int maxIterations)
     }
     
     // Make some initialization using k-means
+    double llikelihood = _LogLikelihood(allFeatures);
     
     for(int i = 0; i < maxIterations; i++)
     {       
         cv::Mat gamma = _E(allFeatures);
         _M(gamma, allFeatures);
         
-        // if(_LogLikelihood() > somethreshold) (???)
-        //    break;
+        if((_LogLikelihood() - llikelihood) <= _ConvergenceThreshold)
+            break;
     }
 }
 
@@ -99,9 +100,51 @@ cv::Mat GMM::_E(const BagOfFeatures &bof) const
     return gamma;
 }
 
+// M - step
+// Improves the mean, covariance, and weight of each gaussian using
+// the responsibilites computed in the E step
 void GMM::_M(const cv::Mat &gamma, const BagOfFeatures &bof)
 {
-    
+    for(int k = 0; k < _Gaussians.size(); k++)
+    {
+        // Get the kth gaussian responsibilities
+        cv::Mat gammak = gamma.col(k);
+        
+        // Compute Nk, the sum of all responsibilties for this gaussian
+        double Nk = std::accumulate(gammak.begin<double>(), gammak.end<double>(), 0);
+        
+        // Update the mean
+        cv::Mat uNew = cv::Mat::zeros(gammak.size(), CV_64F);
+        for(int n = 0; n < gammak.rows; n++)
+        {
+            uNew += gammak.at<double>(n, 1) * cv::Mat(bof[n]);
+        }
+        
+        uNew /= Nk;
+        _Gaussians[k].Mean() = uNew;
+        
+        // Update the covariance
+        cv::Mat sigmaNew = cv::Mat::zeros(gammak.rows, gammak.rows, CV_64F);
+        for(int n = 0; n < gammak.rows; n++)
+        {
+            cv::Mat meanDistance = cv::Mat(bof[n]) - uNew;
+            sigmaNew += gammak.at<double>(n, 1) * (meanDistance * meanDistance.t());
+        }
+        
+        sigmaNew /= Nk;
+        _Gaussians[k].Covariance() = sigmaNew;
+        
+        // Udpate weight
+        _Gaussians[k].Weight() = Nk / bof.size();
+    }
+}
+
+// Computes the likelihood that the GMM that is currently trained
+// is the one that generated our data
+double GMM::_LogLikelihood(const BagOfFeatures &bof) const
+{
+    const GMM &gmm = *this;
+    return std::accumulate(bof.begin(), bof.end(), 0, [&gmm](double val, const Histogram &sample) { return val + std::log(gmm(cv::Mat(sample))); });
 }
 
 // Evaluates the GMM on a sample point
