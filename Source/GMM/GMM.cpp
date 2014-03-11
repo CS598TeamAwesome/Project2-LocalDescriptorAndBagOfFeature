@@ -10,6 +10,8 @@
  *
  * Where: r_ik = (a_k * G(x_i | u_k, C_k)) / sum(l, a_l * G(x_i | u_l, C_l))
  *
+ * (these equations are probably all wrong)
+ *
  */
 #include "GMM.hpp"
 #include <cmath>
@@ -26,6 +28,7 @@ WeightedGaussian::WeightedGaussian(double weight, const cv::Mat &mean, const cv:
     
 }
 
+// Evaluates the weighted multivariate gaussian for a sample point
 double WeightedGaussian::operator ()(const cv::Mat &x) const
 {    
     cv::Mat precision = _Covariance.inv();    
@@ -44,11 +47,64 @@ GMM::GMM(int num)
     
 }
 
-void GMM::Train(const FeatureSet &featureSet)
+// Trains a GMM on feature data from a set of images using the Expecation Maximization (EM) algorithm
+// This is probably pretty slow
+void GMM::Train(const FeatureSet &featureSet, int maxIterations)
+{
+    // Make one long vector out of the input features
+    BagOfFeatures allFeatures;
+    for(BagOfFeatures singleImg : featureSet)
+    {
+        for(Histogram h : singleImg)
+        {
+            allFeatures.push_back(h);
+        }
+    }
+    
+    // Make some initialization using k-means
+    
+    for(int i = 0; i < maxIterations; i++)
+    {       
+        cv::Mat gamma = _E(allFeatures);
+        _M(gamma, allFeatures);
+        
+        // if(_LogLikelihood() > somethreshold) (???)
+        //    break;
+    }
+}
+
+// Finds the responsibility of the kth gaussian for a sample
+// Posterior probability that x belongs to the kth gaussian found using bayes theorem
+double GMM::_Responsibility(const cv::Mat &x, int k) const
+{
+    const GMM &model = *this;
+    return _Gaussians[k](x) / model(x);
+}
+
+// E - step
+// Computes the responsibility of each gaussian for each data sample
+// returns an nxk matrix (the gamma matrix) where n is the number of features and k is the number of gaussians
+cv::Mat GMM::_E(const BagOfFeatures &bof) const
+{
+    cv::Mat gamma(bof.size(), _Gaussians.size(), CV_64F);
+    
+    for(int n = 0; n < bof.size(); n++) // For each sample
+    {
+        for(int k = 0; k < _Gaussians.size(); k++) // and each gaussian
+        {
+            gamma.at<double>(n, k) = _Responsibility(cv::Mat(bof[n]), k); // find its responsibility
+        }
+    }
+    
+    return gamma;
+}
+
+void GMM::_M(const cv::Mat &gamma, const BagOfFeatures &bof)
 {
     
 }
 
+// Evaluates the GMM on a sample point
 double GMM::operator ()(const cv::Mat &x) const
 {
     return std::accumulate(_Gaussians.begin(), _Gaussians.end(), 0, [&x](double val, WeightedGaussian wg) { return val + wg(x); });

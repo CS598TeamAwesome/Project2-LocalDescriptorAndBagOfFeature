@@ -1,7 +1,6 @@
 #pragma once
 #include <opencv2/opencv.hpp>
 #include <vector>
-#include <tuple>
 #include "../Util/Types.hpp"
 
 namespace LocalDescriptorAndBagOfFeature 
@@ -29,7 +28,7 @@ namespace LocalDescriptorAndBagOfFeature
         public:
             GMM(int num);
             
-            void Train(const FeatureSet &featureSet);
+            void Train(const FeatureSet &featureSet, int maxIterations);
             std::vector<double> Supervector(const BagOfFeatures &bof) const;
             
             int NumGaussians(void) const { return _Gaussians.size(); }
@@ -37,6 +36,11 @@ namespace LocalDescriptorAndBagOfFeature
             double operator ()(const cv::Mat &x) const;
             
         private:                                    
+            double _Responsibility(const cv::Mat &x, int k) const;
+            cv::Mat _E(const BagOfFeatures &bof) const;
+            void _M(const cv::Mat &gamma, const BagOfFeatures &bof);
+            double _LogLikelihood(void) const;
+            
             std::vector<WeightedGaussian> _Gaussians;
     };
 }
