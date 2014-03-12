@@ -37,9 +37,9 @@ namespace LocalDescriptorAndBagOfFeature
             
         private:                                    
             double _Responsibility(const cv::Mat &x, int k) const;
-            cv::Mat _E(const BagOfFeatures &bof) const;
-            void _M(const cv::Mat &gamma, const BagOfFeatures &bof);
-            double _LogLikelihood(const BagOfFeatures &bof) const;
+            cv::Mat _E(const cv::Mat &features) const;
+            void _M(const cv::Mat &gamma, const cv::Mat &samples);
+            double _LogLikelihood(const cv::Mat &samples) const;
             
             std::vector<WeightedGaussian> _Gaussians;
             double _ConvergenceThreshold;
