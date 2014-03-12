@@ -15,6 +15,7 @@
  */
 #include "GMM.hpp"
 #include <cmath>
+#include "../Util/Clustering.hpp"
 
 #ifndef M_PI
 #   define M_PI 3.14159265358979323846
@@ -61,14 +62,15 @@ void GMM::Train(const FeatureSet &featureSet, int maxIterations)
         }
     }
     
+    // Initialize using k-means
+    _Init(featuresFlattened);
+    
     // Convert the std::vector representation into a matrix representation
     cv::Mat allFeatures(featuresFlattened[0].size(), featuresFlattened.size(), CV_64F); // Each column in this matrix is a sample
     for(int i = 0; i < featuresFlattened.size(); i++)
     {
         allFeatures.col(i) = cv::Mat(featuresFlattened[i]);
     }
-    
-    // Initialize using k-means
     
     // Make some initialization using k-means
     double llikelihood = _LogLikelihood(allFeatures);
@@ -81,6 +83,37 @@ void GMM::Train(const FeatureSet &featureSet, int maxIterations)
         if((_LogLikelihood(allFeatures) - llikelihood) <= _ConvergenceThreshold)
             break;
     }
+}
+
+// Initialzes the GMM using k-means
+void GMM::_Init(const BagOfFeatures &bof)
+{
+    // Run k-means on the samples
+    std::vector<std::vector<double>> u0;
+    std::vector<int> sizes, labels;    
+    kmeans(bof, _Gaussians.size(), labels, u0, sizes);
+    
+    // For each gaussian
+    for(int k = 0; k < _Gaussians.size(); k++)
+    {
+        // The initial weight is the number of samples assigned to the kth mean over the total number of samples
+        _Gaussians[k].Weight() = sizes[k] / bof.size();
+        
+        // The inital mean is just the kth mean
+        _Gaussians[k].Mean() = cv::Mat(u0[k]);
+        
+        // The covarance is computed from the mean distance for each sample in the cluter NOTE: this needs to be fixed!
+        cv::Mat c0 = cv::Mat::zeros(u0[k].size(), u0[k].size(), CV_64F);
+        for(int n = 0; n < bof.size(); n++)
+        {
+            cv::Mat meanDist = cv::Mat(bof[n]) - _Gaussians[k].Mean();
+            c0 += (meanDist * meanDist.t());
+        };
+        
+        c0 /= sizes[k]; // This needs to be normalized (in a sense)
+        
+        _Gaussians[k].Covariance() = c0;        
+    }    
 }
 
 // Finds the responsibility of the kth gaussian for a sample
@@ -101,7 +134,7 @@ cv::Mat GMM::_E(const cv::Mat &samples) const
     
     for(int n = 0; n < samples.cols; n++) // For each sample
     {
-        double gmmXn = model(samples.col(n));
+        double gmmXn = model(samples.col(n)); // GMM in its current state evaluated for this sample
         
         for(int k = 0; k < _Gaussians.size(); k++) // and each gaussian
         {

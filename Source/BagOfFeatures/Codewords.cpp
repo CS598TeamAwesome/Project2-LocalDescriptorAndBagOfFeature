@@ -3,6 +3,6 @@
 
 void LocalDescriptorAndBagOfFeature::FindCodewords(const std::vector<std::vector<double> > &features, int numCodeWords, std::vector<std::vector<double> > &codewords)
 {
-    std::vector<int> labels;
-    kmeans(features, numCodeWords, labels, codewords);
+    std::vector<int> labels, sizes;
+    kmeans(features, numCodeWords, labels, codewords, sizes);
 }

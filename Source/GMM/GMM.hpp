@@ -35,7 +35,9 @@ namespace LocalDescriptorAndBagOfFeature
             
             double operator ()(const cv::Mat &x) const;
             
-        private:                                    
+        private:                     
+            void _Init(const BagOfFeatures &bof);
+            
             double _Responsibility(const cv::Mat &x, int k) const;
             cv::Mat _E(const cv::Mat &features) const;
             void _M(const cv::Mat &gamma, const cv::Mat &samples);
