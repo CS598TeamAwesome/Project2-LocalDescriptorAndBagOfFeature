@@ -47,7 +47,7 @@ double euclidean_distance(const std::vector<double> &v1, const std::vector<doubl
  * - Runs until local minimum is reached.
  * - Uses Euclidean distance
  */
-double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers){
+double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes){
     int sample_ct = input.size();
     int dim = input[0].size(); //dimension of samples, maybe cleaner to pass this in
 
@@ -137,6 +137,12 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
         centers.push_back(binfo.mean);
     }
 
+    //set cluster sizes: from binfo
+    sizes.clear();
+    for(bin_info& binfo : totals){
+        sizes.push_back(binfo.size);
+    }
+
     //set labels
     labels.clear();
     for(int& i: current_bins){
@@ -160,21 +166,24 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
  * @brief LocalDescriptorAndBagOfFeature::kmeans
  *  -- run kmeans for N trials and return the best one
  */
-double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, int trials){
+double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int trials){
     //initialize best results
     std::vector<std::vector<double>> best_centers;
     std::vector<int> best_labels;
-    double best_compactness = kmeans(input, K, best_labels, best_centers); //first trial
+    std::vector<int> best_sizes;
+    double best_compactness = kmeans(input, K, best_labels, best_centers, best_sizes); //first trial
 
     for(int i = 1; i < trials; i++){
         std::vector<std::vector<double>> current_centers;
         std::vector<int> current_labels;
-        double current_compactness = kmeans(input, K, current_labels, current_centers);
+        std::vector<int> current_sizes;
+        double current_compactness = kmeans(input, K, current_labels, current_centers, current_sizes);
 
         if(current_compactness < best_compactness){
             best_compactness = current_compactness;
             best_centers = current_centers;
             best_labels = current_labels;
+            best_sizes = current_sizes;
         }
     }
 
@@ -184,11 +193,17 @@ double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<doub
         centers.push_back(bin_mean);
     }
 
+    //set cluster sizes
+    sizes.clear();
+    for(int& i: best_sizes){
+        sizes.push_back(i);
+    }
+
     //set labels
     labels.clear();
     for(int& i: best_labels){
         labels.push_back(i);
-    }
+    }    
 
     return best_compactness;
 }
