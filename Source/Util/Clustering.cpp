@@ -6,33 +6,6 @@ struct bin_info {
     std::vector<double> mean;
 };
 
-void vector_add(std::vector<double> &v1, std::vector<double> &v2){
-    assert(v1.size() == v2.size());
-
-    std::transform(v1.begin(), v1.end(), v2.begin(), v1.begin(), std::plus<double>());
-}
-
-void vector_subtract(std::vector<double> &v1, std::vector<double> &v2){
-    assert(v1.size() == v2.size());
-
-    std::transform(v1.begin(), v1.end(), v2.begin(), v1.begin(), std::minus<double>());
-}
-
-double euclidean_distance(const std::vector<double> &v1, const std::vector<double> &v2){
-    assert(v1.size() == v2.size());
-
-    //get differences
-    std::vector<double> diff(v1.size());
-    std::transform(v1.begin(), v1.end(), v2.begin(), diff.begin(), std::minus<double>());
-
-    //sum squares and take sqrt
-    double sum2 = std::accumulate(diff.begin(), diff.end(), 0.0, [](double accum, double elem) { return accum + elem * elem; });
-    double sum = std::sqrt(sum2);
-
-    return sum;
-}
-
-
 /**
  * @brief LocalDescriptorAndBagOfFeature::kmeans - computes K cluster centers for given samples
  * @param input -- the samples, a vector of vector double -- assumed to be of equal length
@@ -128,6 +101,9 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
             }
         }
     }
+
+    //TODO: bound the iteration count or other early termination option
+    //std::cout << "kmeans ran for: " << iteration_ct << " iterations" << std::endl;
 
     //5. local minimum reached
 
