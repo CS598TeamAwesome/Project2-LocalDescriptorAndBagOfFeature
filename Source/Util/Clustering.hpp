@@ -6,11 +6,11 @@
 #include <functional>
 #include <assert.h>
 #include <stdlib.h>
-<<<<<<< HEAD
+//<<<<<<< HEAD
 #include <numeric>
-=======
+//=======
 #include "Distances.hpp"
->>>>>>> 8bebbd5d26b84adeec6a7c7784c0156f42367f88
+//>>>>>>> 8bebbd5d26b84adeec6a7c7784c0156f42367f88
 
 namespace LocalDescriptorAndBagOfFeature {
 
