@@ -1,38 +1,26 @@
 #include "DetectFeature.hpp"
-#include <opencv\cv.h>
-#include <opencv\highgui.h>
-#include <opencv2\highgui\highgui.hpp>
-#include <opencv2\imgproc\imgproc.hpp>
-#include <opencv2\legacy\legacy.hpp>
-#include <opencv2\nonfree\features2d.hpp>
-#include <stdio.h>
-#include <iostream>
-#include <iterator>
-#include <vector>
-#include <stdlib.h>
-#include <fstream>
 
-using namespace cv;
-using namespace std;
+using namespace LocalDescriptorAndBagOfFeature;
 
-Mat DetectFeature::extractFeature (Mat &img){
-	Mat img1 = imread(img,CV_LOAD_IMAGE_GRAYSCALE);
-	if(!img1.data){
+Mat DetectFeature::extractFeature (Mat &img)
+{
+	if(!img.data){
 		cout << "Error in reading image" << endl;
 	}
+
+	Mat img_gray;
+	cvtColor( img, img_gray, CV_RGB2GRAY );
 
 	SurfFeatureDetector detector(400);
 
 	vector<KeyPoint> keypoint1;
 
-	detector.detect(img1,keypoint1);
+	detector.detect(img_gray,keypoint1);
 
 	Mat img_keypoint1;
-	drawKeypoints(img1, keypoint1, img_keypoint1, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
+	drawKeypoints(img_gray, keypoint1, img_keypoint1, Scalar::all(-1), DrawMatchesFlags::DEFAULT );
 
-	imshow("Keypoints for image 1", img_keypoint1);
-
-	//waitKey(0);
+	//imshow("Keypoints for image 1", img_keypoint1);
 
 	return img_keypoint1;
 }
