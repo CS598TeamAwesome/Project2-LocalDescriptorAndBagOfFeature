@@ -27,7 +27,7 @@ namespace LocalDescriptorAndBagOfFeature
     class GMM
     {
         public:
-            GMM(int num);
+            GMM(int num, double convergenceThreshold = 0.001);
             
             void Train(const FeatureSet &featureSet, int maxIterations);
             std::vector<double> Supervector(const BagOfFeatures &bof) const;
@@ -36,12 +36,15 @@ namespace LocalDescriptorAndBagOfFeature
             
             double operator ()(const cv::Mat &x) const;
             
-        private:                                    
+        private:                     
+            void _Init(const BagOfFeatures &bof);
+            
             double _Responsibility(const cv::Mat &x, int k) const;
-            cv::Mat _E(const BagOfFeatures &bof) const;
-            void _M(const cv::Mat &gamma, const BagOfFeatures &bof);
-            double _LogLikelihood(void) const;
+            cv::Mat _E(const cv::Mat &features) const;
+            void _M(const cv::Mat &gamma, const cv::Mat &samples);
+            double _LogLikelihood(const cv::Mat &samples) const;
             
             std::vector<WeightedGaussian> _Gaussians;
+            double _ConvergenceThreshold;
     };
 }

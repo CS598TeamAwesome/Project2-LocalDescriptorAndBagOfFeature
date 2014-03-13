@@ -45,8 +45,9 @@ int main(int argc, char **argv){
 
     vector<int> labels;
     vector<vector<double>> centers;
+    vector<int> sizes;
 
-    double compactness = kmeans(samples, 5, labels, centers, 100);
+    double compactness = kmeans(samples, 5, labels, centers, sizes, 100);
     std::cout << compactness << std::endl;
 
     //print out bin labels for samples
@@ -57,7 +58,7 @@ int main(int argc, char **argv){
 
     //print out cluster centers
     for(int i = 0; i < 5; i++){
-        std::cout << "cluster " << i << ": ";
+        std::cout << "cluster " << i << "(" << sizes[i] << ")" << ": ";
         for(double& d : centers[i]){
             std::cout << d << ", ";
         }
