@@ -102,10 +102,11 @@ void GMM::_Init(const BagOfFeatures &bof)
         // The inital mean is just the kth mean
         _Gaussians[k].Mean() = cv::Mat(u0[k]);
         
-        // The covarance is computed from the mean distance for each sample in the cluter NOTE: this needs to be fixed!
+        // The covarance is computed from the mean distance for each sample in the cluster 
         cv::Mat c0 = cv::Mat::zeros(u0[k].size(), u0[k].size(), CV_64F);
-        for(int n = 0; n < bof.size(); n++)
+        for(auto labeln = std::find(labels.begin(), labels.end(), k); labeln != labels.end(); labeln = std::find(labeln+1, labels.end(), k))
         {
+            int n = std::distance(labels.begin(), labeln);
             cv::Mat meanDist = cv::Mat(bof[n]) - _Gaussians[k].Mean();
             c0 += (meanDist * meanDist.t());
         };
