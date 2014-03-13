@@ -6,6 +6,7 @@
 #include <functional>
 #include <assert.h>
 #include <stdlib.h>
+#include <numeric>
 
 namespace LocalDescriptorAndBagOfFeature {
 
