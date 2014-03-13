@@ -1,18 +1,3 @@
-/*
- *
- * EM: 
- * pick starting a, u and C for each G_k (can use k-means for this somehow)
- *
- * update:
- * a_k = n_k / n
- * u_k = (1 / n_k) * sum (i, r_ik * x_i)
- * C_k = ( (1 / n_k) * sum(i, r_ik * x_i * x'_i) ) - (u_k * u'_k)
- *
- * Where: r_ik = (a_k * G(x_i | u_k, C_k)) / sum(l, a_l * G(x_i | u_l, C_l))
- *
- * (these equations are probably all wrong)
- *
- */
 #include "GMM.hpp"
 #include <cmath>
 #include "../Util/Clustering.hpp"
