@@ -12,6 +12,7 @@ set(SOURCE)
 set(HEADERS)
 
 add_subdirectory(Extraction)
+add_subdirectory(Quantization)
 add_subdirectory(Util)
 add_subdirectory(BagOfFeatures)
 add_subdirectory(GMM)
