@@ -11,7 +11,7 @@ using namespace LocalDescriptorAndBagOfFeature;
 
 //gaussian-shaped kernel, we pair it with Euclidean distance (Gemert et al.)
 double LocalDescriptorAndBagOfFeature::gaussian_kernel(double sigma, double x){
-    return normal_coefficient * 1/sigma * std::exp(-1*x*x / 2*(sigma*sigma));
+    return normal_coefficient * 1/sigma * std::exp((-1*x*x)/(2*sigma*sigma));
 }
 
 //sigma is a smoothing parameter and codebook is the vocabulary (Gemert et al.)
@@ -25,7 +25,6 @@ void CodewordUncertainty::quantize(const std::vector<double> &region, std::vecto
     std::vector<double> distances;
     for(std::vector<double>& codeword : codebook){
         double distance = euclidean_distance(codeword, region);
-        //TODO: at the moment, euclidean_distance() lives in Clustering, should move to a distance class
         distances.push_back(distance);
     }
 
