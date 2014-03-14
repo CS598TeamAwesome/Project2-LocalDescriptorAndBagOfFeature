@@ -30,7 +30,7 @@ namespace LocalDescriptorAndBagOfFeature
             GMM(int num, double convergenceThreshold = 0.001);
             
             void Train(const FeatureSet &featureSet, int maxIterations);
-            std::vector<double> Supervector(const BagOfFeatures &bof) const;
+            std::vector<double> Supervector(const BagOfFeatures &bof);
             
             int NumGaussians(void) const { return _Gaussians.size(); }
             

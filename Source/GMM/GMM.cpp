@@ -34,7 +34,7 @@ GMM::GMM(int num, double convergenceThreshold)
     
 }
 
-std::vector<double> GMM::Supervector(const BagOfFeatures &bof) const
+std::vector<double> GMM::Supervector(const BagOfFeatures &bof)
 {
     // Make a matrix out of the input features
     cv::Mat samples(bof[0].size(), bof.size(), CV_64F); // Each column in this matrix is a sample
