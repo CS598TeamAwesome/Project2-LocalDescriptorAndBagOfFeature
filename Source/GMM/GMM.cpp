@@ -1,5 +1,6 @@
 #include "GMM.hpp"
 #include <cmath>
+#include <random>
 #include "../Util/Clustering.hpp"
 
 #ifndef M_PI
@@ -31,6 +32,50 @@ GMM::GMM(int num, double convergenceThreshold)
     : _Gaussians(num), _ConvergenceThreshold(convergenceThreshold)
 {
     
+}
+
+std::vector<double> GMM::Supervector(const BagOfFeatures &bof) const
+{
+    // Make a matrix out of the input features
+    cv::Mat samples(bof[0].size(), bof.size(), CV_64F); // Each column in this matrix is a sample
+    for(int i = 0; i < bof.size(); i++)
+    {
+        samples.col(i) = cv::Mat(bof[i]);
+    }
+    
+    // Compute gamma for the input samples
+    cv::Mat gamma = _E(samples);
+    
+    // Compute Z vectors
+    cv::Mat Z = cv::Mat::zeros(samples.rows, _Gaussians.size(), CV_64F);
+    for(int k = 0; k < _Gaussians.size(); k++)
+    {
+        cv::Mat &zk = Z.col(k);
+        double sum = 0;
+        for(int i = 0; i < samples.cols; i++)
+        {
+            double g = gamma.at<double>(i, k);
+            
+            zk += g * (samples.col(i) - _Gaussians[k].Mean());
+            sum += g;
+        }
+        
+        sum *= samples.cols;
+        
+        zk /= sum;
+    }
+    
+    // Concatenate Z vectors into a single long vector
+    std::vector<double> sv;
+    for(int i = 0; i < Z.cols; i++)
+    {
+        for(int j = 0; j < Z.rows; j++)
+        {
+            sv.push_back(Z.at<double>(j, i));
+        }
+    }
+    
+    return sv;
 }
 
 // Trains a GMM on feature data from a set of images using the Expecation Maximization (EM) algorithm
