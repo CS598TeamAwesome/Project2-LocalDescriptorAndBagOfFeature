@@ -20,7 +20,7 @@ struct bin_info {
  * - Runs until local minimum is reached.
  * - Uses Euclidean distance
  */
-double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes){
+double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int iteration_bound){
     int sample_ct = input.size();
     int dim = input[0].size(); //dimension of samples, maybe cleaner to pass this in
 
@@ -53,7 +53,7 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
 
     bool recompute = true;
     int iteration_ct = 0;
-    while(recompute){
+    while(recompute && iteration_ct < iteration_bound){
         std::cout << "... iteration: " << iteration_ct << std::endl;
         iteration_ct++;
 
@@ -143,19 +143,19 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
  * @brief LocalDescriptorAndBagOfFeature::kmeans
  *  -- run kmeans for N trials and return the best one
  */
-double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int trials){
+double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int iteration_bound,int trials){
     //initialize best results
     std::vector<std::vector<double>> best_centers;
     std::vector<int> best_labels;
     std::vector<int> best_sizes;
-    double best_compactness = kmeans(input, K, best_labels, best_centers, best_sizes); //first trial
+    double best_compactness = kmeans(input, K, best_labels, best_centers, best_sizes, iteration_bound); //first trial
 
     for(int i = 1; i < trials; i++){
         std::cout << "k-means trial#: " << i << std::endl;
         std::vector<std::vector<double>> current_centers;
         std::vector<int> current_labels;
         std::vector<int> current_sizes;
-        double current_compactness = kmeans(input, K, current_labels, current_centers, current_sizes);
+        double current_compactness = kmeans(input, K, current_labels, current_centers, current_sizes, iteration_bound);
         std::cout << ".. current compactness: " << current_compactness;
 
         if(current_compactness < best_compactness){

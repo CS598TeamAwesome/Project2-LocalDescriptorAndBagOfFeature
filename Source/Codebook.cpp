@@ -156,7 +156,10 @@ int main(int argc, char **argv){
     vector<int> labels;
     vector<vector<double>> centers;
     vector<int> sizes;
-    double compactness = kmeans(samples, 200, labels, centers, sizes, 1); //single run with random centers
+    double compactness = kmeans(samples, 200, labels, centers, sizes, 30, 1); //single run with random centers
+    //double compactness = kmeans(samples, 400, labels, centers, sizes, 30, 1); //400 words - Xiaoran
+    //double compactness = kmeans(samples, 800, labels, centers, sizes, 30, 1); //800 words - Miao
+    //double compactness = kmeans(samples, 1600, labels, centers, sizes, 30, 1); //1600 words - Cheng
     std::cout << compactness << std::endl;
     std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
 
