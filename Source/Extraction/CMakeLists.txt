@@ -1,5 +1,6 @@
 set(SOURCE
     ${SOURCE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/DetectFeature.cpp
     PARENT_SCOPE
 )
 

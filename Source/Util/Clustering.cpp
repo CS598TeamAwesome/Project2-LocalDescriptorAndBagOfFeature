@@ -6,33 +6,6 @@ struct bin_info {
     std::vector<double> mean;
 };
 
-void vector_add(std::vector<double> &v1, std::vector<double> &v2){
-    assert(v1.size() == v2.size());
-
-    std::transform(v1.begin(), v1.end(), v2.begin(), v1.begin(), std::plus<double>());
-}
-
-void vector_subtract(std::vector<double> &v1, std::vector<double> &v2){
-    assert(v1.size() == v2.size());
-
-    std::transform(v1.begin(), v1.end(), v2.begin(), v1.begin(), std::minus<double>());
-}
-
-double euclidean_distance(const std::vector<double> &v1, const std::vector<double> &v2){
-    assert(v1.size() == v2.size());
-
-    //get differences
-    std::vector<double> diff(v1.size());
-    std::transform(v1.begin(), v1.end(), v2.begin(), diff.begin(), std::minus<double>());
-
-    //sum squares and take sqrt
-    double sum2 = std::accumulate(diff.begin(), diff.end(), 0.0, [](double accum, double elem) { return accum + elem * elem; });
-    double sum = std::sqrt(sum2);
-
-    return sum;
-}
-
-
 /**
  * @brief LocalDescriptorAndBagOfFeature::kmeans - computes K cluster centers for given samples
  * @param input -- the samples, a vector of vector double -- assumed to be of equal length
@@ -47,7 +20,7 @@ double euclidean_distance(const std::vector<double> &v1, const std::vector<doubl
  * - Runs until local minimum is reached.
  * - Uses Euclidean distance
  */
-double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes){
+double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int iteration_bound){
     int sample_ct = input.size();
     int dim = input[0].size(); //dimension of samples, maybe cleaner to pass this in
 
@@ -80,7 +53,8 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
 
     bool recompute = true;
     int iteration_ct = 0;
-    while(recompute){
+    while(recompute && iteration_ct < iteration_bound){
+        std::cout << "... iteration: " << iteration_ct << std::endl;
         iteration_ct++;
 
         //2. compare each sample to each bin mean and note most similar (euclidean distance)
@@ -129,6 +103,9 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
         }
     }
 
+    //TODO: bound the iteration count or other early termination option
+    //std::cout << "kmeans ran for: " << iteration_ct << " iterations" << std::endl;
+
     //5. local minimum reached
 
     //set cluster centers: pull the means out from the vector of bin_infos
@@ -166,18 +143,20 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
  * @brief LocalDescriptorAndBagOfFeature::kmeans
  *  -- run kmeans for N trials and return the best one
  */
-double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int trials){
+double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int iteration_bound,int trials){
     //initialize best results
     std::vector<std::vector<double>> best_centers;
     std::vector<int> best_labels;
     std::vector<int> best_sizes;
-    double best_compactness = kmeans(input, K, best_labels, best_centers, best_sizes); //first trial
+    double best_compactness = kmeans(input, K, best_labels, best_centers, best_sizes, iteration_bound); //first trial
 
     for(int i = 1; i < trials; i++){
+        std::cout << "k-means trial#: " << i << std::endl;
         std::vector<std::vector<double>> current_centers;
         std::vector<int> current_labels;
         std::vector<int> current_sizes;
-        double current_compactness = kmeans(input, K, current_labels, current_centers, current_sizes);
+        double current_compactness = kmeans(input, K, current_labels, current_centers, current_sizes, iteration_bound);
+        std::cout << ".. current compactness: " << current_compactness;
 
         if(current_compactness < best_compactness){
             best_compactness = current_compactness;
