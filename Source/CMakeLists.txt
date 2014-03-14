@@ -21,4 +21,6 @@ add_library(LocalDescriptorAndBagOfFeature ${SOURCE} ${HEADERS})
 target_link_libraries(LocalDescriptorAndBagOfFeature ${OpenCV_LIBS})
 
 add_executable(Test Test.cpp)
+add_executable(BuildCodebook Codebook.cpp)
 target_link_libraries(Test LocalDescriptorAndBagOfFeature)
+target_link_libraries(BuildCodebook LocalDescriptorAndBagOfFeature)

@@ -54,6 +54,7 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
     bool recompute = true;
     int iteration_ct = 0;
     while(recompute){
+        std::cout << "... iteration: " << iteration_ct << std::endl;
         iteration_ct++;
 
         //2. compare each sample to each bin mean and note most similar (euclidean distance)
@@ -150,10 +151,12 @@ double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<doub
     double best_compactness = kmeans(input, K, best_labels, best_centers, best_sizes); //first trial
 
     for(int i = 1; i < trials; i++){
+        std::cout << "k-means trial#: " << i << std::endl;
         std::vector<std::vector<double>> current_centers;
         std::vector<int> current_labels;
         std::vector<int> current_sizes;
         double current_compactness = kmeans(input, K, current_labels, current_centers, current_sizes);
+        std::cout << ".. current compactness: " << current_compactness;
 
         if(current_compactness < best_compactness){
             best_compactness = current_compactness;
