@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include "BagOfFeatures/Codewords.hpp"
 #include "Quantization/HardAssignment.hpp"
 #include "Util/Distances.hpp"
 #include "Util/Types.hpp"
@@ -107,31 +108,6 @@ void convert_mat_to_vector(const cv::Mat &descriptors, std::vector<std::vector<d
     }
 }
 
-void load_codebook(std::string filename, std::vector<std::vector<double>> &codebook){
-    //load codebook from file
-    std::ifstream filein (filename);
-    std::string s;
-    std::getline(filein, s);
-    std::istringstream sin(s);
-
-    int codeword_ct;
-    sin >> codeword_ct;
-
-    for(int i = 0; i < codeword_ct; i++){
-        getline(filein, s);
-        sin.str(s);
-        sin.clear();
-
-        vector<double> codeword;
-        double d;
-        while(sin >> d){
-            codeword.push_back(d);
-        }
-        codebook.push_back(codeword);
-    }
-    filein.close();
-}
-
 //gets centroid for category from training images
 void train_category(const std::vector<cv::Mat> &samples, Histogram &centroid, const cv::SiftFeatureDetector &detector_sift, const cv::SiftDescriptorExtractor &extractor, HardAssignment &hard_quant){
     clock_t start = clock();
@@ -171,22 +147,46 @@ void train_category(const std::vector<cv::Mat> &samples, Histogram &centroid, co
     std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
 }
 
+void SaveClassifier(std::string filename, const std::vector<std::vector<double>> &category_centroids, const std::vector<std::string> &category_labels){
+    std::ofstream fileout (filename);
+    fileout << category_centroids.size() << std::endl;
+    for(int i = 0; i < category_centroids.size(); i++){
+        fileout << category_labels[i] << std::endl;
+        for(const double& d : category_centroids[i]){
+            fileout << d << " ";
+        }
+        fileout << std::endl;
+    }
+    fileout.close();
+}
+
 int main(int argc, char **argv){
 
-    //load training images -- TODO: may want to make some effort to generalize this to other datasets
+    //Load training images -- TODO: may want to make some effort to generalize this to other datasets
     std::vector<cv::Mat> bikes, cars, backgrounds, people;
     load_bikes(bikes);
     load_cars(cars);
     load_background(backgrounds);
     load_people(people);
 
-    //load codebook
+    std::vector<std::vector<cv::Mat>> training_images;
+    training_images.push_back(bikes);
+    training_images.push_back(cars);
+    training_images.push_back(backgrounds);
+    training_images.push_back(people);
+
+    std::vector<std::string> category_labels;
+    category_labels.push_back("Bikes");
+    category_labels.push_back("Cars");
+    category_labels.push_back("Backgrounds");
+    category_labels.push_back("People");
+
+    //Load codebook
     std::cout << "Load Codebook" << std::endl;
     std::vector<std::vector<double>> codebook;
-    load_codebook("codebook_graz2.out", codebook);
+    LoadCodebook("codebook_graz2_25_5.out", codebook);
 
-    //train nearest centroid classifier
-    std::vector<std::string> category_labels;
+    //Train nearest centroid classifier
     std::vector<std::vector<double>> category_centroids;
 
     //TODO: vary these choices to compare performance
@@ -194,47 +194,15 @@ int main(int argc, char **argv){
     cv::SiftDescriptorExtractor extractor;      //sift128 descriptor
     HardAssignment hard_quant(codebook);        //hard quantization
 
-    //TODO: generalize this -- apply to other datasets
-
-    std::cout << "Training Bikes" << std::endl;
-    //train bikes
-    Histogram bike_centroid(codebook.size());
-    train_category(bikes, bike_centroid, detector_sift, extractor, hard_quant);
-    category_labels.push_back("bikes");
-    category_centroids.push_back(bike_centroid);
-
-    std::cout << "Training Cars" << std::endl;
-    //train cars
-    Histogram car_centroid(codebook.size());
-    train_category(cars, car_centroid, detector_sift, extractor, hard_quant);
-    category_labels.push_back("cars");
-    category_centroids.push_back(car_centroid);
-
-    std::cout << "Training Background" << std::endl;
-    //train background
-    Histogram bg_centroid(codebook.size());
-    train_category(backgrounds, bg_centroid, detector_sift, extractor, hard_quant);
-    category_labels.push_back("backgrounds");
-    category_centroids.push_back(bg_centroid);
-
-    std::cout << "Training People" << std::endl;
-    //train people
-    Histogram people_centroid(codebook.size());
-    train_category(people, people_centroid, detector_sift, extractor, hard_quant);
-    category_labels.push_back("people");
-    category_centroids.push_back(people_centroid);
+    for(int i = 0; i < training_images.size(); i++){
+        std::cout << "Training " << category_labels[i] << std::endl;
+        Histogram centroid(codebook.size());
+        train_category(training_images[i],centroid, detector_sift, extractor, hard_quant);
+        category_centroids.push_back(centroid);
+    }
 
     //write classifier to file
-    std::ofstream fileout ("graz2_centroid_classifier.out");
-    fileout << category_centroids.size() << std::endl;
-    for(int i = 0; i < category_centroids.size(); i++){
-        fileout << category_labels[i] << std::endl;
-        for(double& d : category_centroids[i]){
-            fileout << d << " ";
-        }
-        fileout << std::endl;
-    }
-    fileout.close();
+    SaveClassifier("graz2_centroid_classifier_25_5.out", category_centroids, category_labels);
 
     return 0;
 }

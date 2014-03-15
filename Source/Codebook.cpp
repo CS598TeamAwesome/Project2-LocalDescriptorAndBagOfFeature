@@ -151,28 +151,14 @@ int main(int argc, char **argv){
     convert_mat_to_vector(training_descriptors, samples);
 
     //4. cluster to codewords
-    std::cout << "Perform K-means Clustering" << std::endl;
     start = clock();
-    vector<int> labels;
+    std::cout << "Find Codewords" << std::endl;
     vector<vector<double>> centers;
-    vector<int> sizes;
-    double compactness = kmeans(samples, 200, labels, centers, sizes, 30, 1); //single run with random centers
-    //double compactness = kmeans(samples, 400, labels, centers, sizes, 30, 1); //400 words - Xiaoran
-    //double compactness = kmeans(samples, 800, labels, centers, sizes, 30, 1); //800 words - Miao
-    //double compactness = kmeans(samples, 1600, labels, centers, sizes, 30, 1); //1600 words - Cheng
-    std::cout << compactness << std::endl;
+    FindCodewords(samples, 25, centers, 5, 1);
     std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
 
     //5. write codebook to file
-    std::ofstream fileout ("codebook_graz2.out");
-    fileout << centers.size() << std::endl;
-    for(vector<double>& code_vector : centers){
-         for(double& d : code_vector){
-             fileout << d << " ";
-         }
-         fileout << std::endl;
-    }
-    fileout.close();
+    SaveCodebook("codebook_graz2_25_5.out", centers);
 
     return 0;
 }
