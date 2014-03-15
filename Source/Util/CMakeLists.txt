@@ -3,6 +3,7 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/Clustering.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Dog.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Distances.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Datasets.cpp
     PARENT_SCOPE
 )
 
@@ -11,6 +12,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/Clustering.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Dog.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Distances.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Datasets.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Types.hpp
     PARENT_SCOPE
 )

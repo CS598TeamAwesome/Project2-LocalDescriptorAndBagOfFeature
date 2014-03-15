@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string>
 #include "Util/Clustering.hpp"
+#include "Util/Datasets.hpp"
 #include "Quantization/HardAssignment.hpp"
 #include "Quantization/CodewordUncertainty.hpp"
 #include "BagOfFeatures/Codewords.hpp"
@@ -114,7 +115,6 @@ int main(int argc, char **argv){
     //1. load training images
     std::vector<cv::Mat> training_images;
     load_training_images(training_images);
-    std::cout << "Total Count: " << training_images.size() << std::endl;
 
     //2. detect keypoints
     std::cout << "Detecting Keypoints" << std::endl;

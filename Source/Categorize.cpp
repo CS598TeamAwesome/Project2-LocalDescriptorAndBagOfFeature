@@ -12,92 +12,14 @@
 #include <sstream>
 #include <string>
 #include "BagOfFeatures/Codewords.hpp"
+#include "Quantization/CodewordUncertainty.hpp"
 #include "Quantization/HardAssignment.hpp"
+#include "Util/Datasets.hpp"
 #include "Util/Distances.hpp"
 #include "Util/Types.hpp"
 
 using std::vector;
 using namespace LocalDescriptorAndBagOfFeature;
-
-void load_bikes(std::vector<cv::Mat> &images){
-    std::cout << "Loading Bikes" << std::endl;
-
-    //GRAZ2 bikes
-    for(int i = 166; i <= 265; i++){
-        //looping over fixed directory path, with expected file names 0.jpg, 1.jpg, etc
-        std::ostringstream convert;
-        if(i < 10)
-            convert << "Test/bike/bike_00" << i << ".bmp";
-        else if(i < 100)
-            convert << "Test/bike/bike_0" << i << ".bmp";
-        else
-            convert << "Test/bike/bike_" << i << ".bmp";
-
-        std::string s = convert.str();
-        cv::Mat img = cv::imread(s);
-        images.push_back(img);
-    }
-}
-
-void load_cars(std::vector<cv::Mat> &images){
-    std::cout << "Loading Cars" << std::endl;
-
-    //GRAZ2 cars
-    for(int i = 321; i <= 420; i++){
-        //looping over fixed directory path, with expected file names 0.jpg, 1.jpg, etc
-        std::ostringstream convert;
-        if(i < 10)
-            convert << "Test/cars/carsgraz_00" << i << ".bmp";
-        else if(i < 100)
-            convert << "Test/cars/carsgraz_0" << i << ".bmp";
-        else
-            convert << "Test/cars/carsgraz_" << i << ".bmp";
-
-        std::string s = convert.str();
-        cv::Mat img = cv::imread(s);
-        images.push_back(img);
-    }
-}
-
-void load_background(std::vector<cv::Mat> &images){
-    std::cout << "Loading Backgrounds" << std::endl;
-
-    //GRAZ2 none
-    for(int i = 281; i <= 380; i++){
-        //looping over fixed directory path, with expected file names 0.jpg, 1.jpg, etc
-        std::ostringstream convert;
-        if(i < 10)
-            convert << "Test/none/bg_graz_00" << i << ".bmp";
-        else if(i < 100)
-            convert << "Test/none/bg_graz_0" << i << ".bmp";
-        else
-            convert << "Test/none/bg_graz_" << i << ".bmp";
-
-        std::string s = convert.str();
-        cv::Mat img = cv::imread(s);
-        images.push_back(img);
-    }
-}
-
-void load_people(std::vector<cv::Mat> &images){
-    std::cout << "Loading People" << std::endl;
-
-    //GRAZ2 person
-    for(int i = 212; i <= 311; i++){
-        //looping over fixed directory path, with expected file names 0.jpg, 1.jpg, etc
-        std::ostringstream convert;
-        if(i < 10)
-            convert << "Test/person/person_00" << i << ".bmp";
-        else if(i < 100)
-            convert << "Test/person/person_0" << i << ".bmp";
-        else
-            convert << "Test/person/person_" << i << ".bmp";
-
-        std::string s = convert.str();
-        cv::Mat img = cv::imread(s);
-        images.push_back(img);
-    }
-}
 
 void convert_mat_to_vector(const cv::Mat &descriptors, std::vector<std::vector<double>> &samples){
     for(int i = 0; i < descriptors.rows; i++){
@@ -137,7 +59,7 @@ void load_classifier(std::string filename, std::vector<std::string> &category_la
     filein.close();
 }
 
-void compute_histogram(cv::Mat &sample, Histogram &feature_vector, cv::SiftFeatureDetector &detector_sift, cv::SiftDescriptorExtractor &extractor, HardAssignment hard_quant){
+void compute_histogram(cv::Mat &sample, Histogram &feature_vector, cv::SiftFeatureDetector &detector_sift, cv::SiftDescriptorExtractor &extractor, CodewordUncertainty hard_quant){
     //detect keypoints
     std::vector<cv::KeyPoint> keypoints;
     detector_sift.detect( sample, keypoints );
@@ -157,7 +79,7 @@ void compute_histogram(cv::Mat &sample, Histogram &feature_vector, cv::SiftFeatu
     hard_quant.quantize(unquantized_features, feature_vector);
 }
 
-void compute_histograms(std::vector<cv::Mat> &samples, std::vector<Histogram> &feature_vectors, cv::SiftFeatureDetector &detector_sift, cv::SiftDescriptorExtractor &extractor, HardAssignment hard_quant){
+void compute_histograms(std::vector<cv::Mat> &samples, std::vector<Histogram> &feature_vectors, cv::SiftFeatureDetector &detector_sift, cv::SiftDescriptorExtractor &extractor, CodewordUncertainty hard_quant){
     int i = 0;
     for(cv::Mat& sample : samples){
         i++;
@@ -200,38 +122,26 @@ void test_category(std::vector<Histogram> &feature_vectors, std::vector<double> 
 int main(int argc, char **argv){
 
     //load test images -- TODO: may want to make some effort to generalize this to other datasets
-    std::vector<cv::Mat> bikes, cars, backgrounds, people;
-    load_bikes(bikes);
-    load_cars(cars);
-    load_background(backgrounds);
-    load_people(people);
-
+    std::cout << "Load Test Images" << std::endl;
     std::vector<std::vector<cv::Mat>> test_images;
-    test_images.push_back(bikes);
-    test_images.push_back(cars);
-    test_images.push_back(backgrounds);
-    test_images.push_back(people);
-
     std::vector<std::string> test_labels;
-    test_labels.push_back("Bikes");
-    test_labels.push_back("Cars");
-    test_labels.push_back("Backgrounds");
-    test_labels.push_back("People");
+    load_graz2_test(test_images, test_labels);
 
     //load codebook
     std::cout << "Load Codebook" << std::endl;
     std::vector<std::vector<double>> codebook;
-    LoadCodebook("codebook_graz2_25_5.out", codebook);
+    LoadCodebook("codebook_graz2_800.out", codebook);
 
     //load nearest centroid classifier
+    std::cout << "Load Classifier" << std::endl;
     std::vector<std::string> category_labels;
     std::vector<std::vector<double>> category_centroids;
-    load_classifier("graz2_centroid_classifier_25_5.out", category_labels, category_centroids);
+    load_classifier("graz2_centroid_classifier_800.out", category_labels, category_centroids);
 
     //TODO: vary these choices to compare performance
     cv::SiftFeatureDetector detector_sift(200); //sift-200 keypoints
     cv::SiftDescriptorExtractor extractor;      //sift128 descriptor
-    HardAssignment hard_quant(codebook);        //hard quantization
+    CodewordUncertainty hard_quant(codebook, 100.0);   //soft quantization
 
     for(int i = 0; i < test_images.size(); i++){
         std::cout << "Compute Vectors for " << test_labels[i] << std::endl;
