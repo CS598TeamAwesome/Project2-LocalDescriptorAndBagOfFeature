@@ -7,6 +7,7 @@
 #include <functional>
 #include <assert.h>
 #include <stdlib.h>
+#include "Quantization.hpp"
 #include "../Util/Distances.hpp"
 
 #ifndef M_PI
@@ -18,10 +19,10 @@ namespace LocalDescriptorAndBagOfFeature {
     const double normal_coefficient = 1/(std::sqrt(2*M_PI));
     double gaussian_kernel(double sigma, double x);
 
-    class CodewordUncertainty { //potentially want a Quantization superclass
+    class CodewordUncertainty : public Quantization {
         public:
             CodewordUncertainty(std::vector<std::vector<double>> codebook, double sigma);
-            void quantize(const std::vector<double> &region, std::vector<double> &histogram);
+            void quantize_region(const std::vector<double> &region, std::vector<double> &histogram);
             void quantize(const std::vector<std::vector<double>> &regions, std::vector<double> &histogram);
 
         private:

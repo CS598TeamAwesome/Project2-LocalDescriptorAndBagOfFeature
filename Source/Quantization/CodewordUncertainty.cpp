@@ -20,7 +20,7 @@ CodewordUncertainty::CodewordUncertainty(std::vector<std::vector<double>> codebo
 }
 
 //take a region and quantize it to the feature space using codeword uncertainty (Gemert et al.)
-void CodewordUncertainty::quantize(const std::vector<double> &region, std::vector<double> &histogram){
+void CodewordUncertainty::quantize_region(const std::vector<double> &region, std::vector<double> &histogram){
     //compute distance table of codevectors to region
     std::vector<double> distances;
     for(std::vector<double>& codeword : codebook){
@@ -47,7 +47,7 @@ void CodewordUncertainty::quantize(const std::vector<std::vector<double>> &regio
 
     //loop over regions, adding the partial histogram to the aggregate histogram
     for(const std::vector<double>& region : regions){
-        quantize(region, partial_histogram);
+        quantize_region(region, partial_histogram);
         vector_add(histogram, partial_histogram);
     }
 }

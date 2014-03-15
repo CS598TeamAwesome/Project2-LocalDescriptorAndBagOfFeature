@@ -14,6 +14,7 @@
 #include "BagOfFeatures/Codewords.hpp"
 #include "Quantization/CodewordUncertainty.hpp"
 #include "Quantization/HardAssignment.hpp"
+#include "Quantization/Quantization.hpp"
 #include "Util/Datasets.hpp"
 #include "Util/Distances.hpp"
 #include "Util/Types.hpp"
@@ -59,7 +60,7 @@ void load_classifier(std::string filename, std::vector<std::string> &category_la
     filein.close();
 }
 
-void compute_histogram(cv::Mat &sample, Histogram &feature_vector, cv::SiftFeatureDetector &detector_sift, cv::SiftDescriptorExtractor &extractor, CodewordUncertainty hard_quant){
+void compute_histogram(cv::Mat &sample, Histogram &feature_vector, cv::SiftFeatureDetector &detector_sift, cv::SiftDescriptorExtractor &extractor, Quantization *quant){
     //detect keypoints
     std::vector<cv::KeyPoint> keypoints;
     detector_sift.detect( sample, keypoints );
@@ -76,16 +77,16 @@ void compute_histogram(cv::Mat &sample, Histogram &feature_vector, cv::SiftFeatu
     convert_mat_to_vector(descriptor_double, unquantized_features);
 
     //quantize regions -- true BagOfFeatures
-    hard_quant.quantize(unquantized_features, feature_vector);
+    quant->quantize(unquantized_features, feature_vector);
 }
 
-void compute_histograms(std::vector<cv::Mat> &samples, std::vector<Histogram> &feature_vectors, cv::SiftFeatureDetector &detector_sift, cv::SiftDescriptorExtractor &extractor, CodewordUncertainty hard_quant){
+void compute_histograms(std::vector<cv::Mat> &samples, std::vector<Histogram> &feature_vectors, cv::SiftFeatureDetector &detector_sift, cv::SiftDescriptorExtractor &extractor, Quantization *quant){
     int i = 0;
     for(cv::Mat& sample : samples){
         i++;
         //std::cout << "computing histogram for image " << i << " of " << samples.size() << std::endl;
         Histogram feature_vector;
-        compute_histogram(sample, feature_vector, detector_sift, extractor, hard_quant);
+        compute_histogram(sample, feature_vector, detector_sift, extractor, quant);
         feature_vectors.push_back(feature_vector);
     }
 }
@@ -125,7 +126,7 @@ int main(int argc, char **argv){
     std::cout << "Load Test Images" << std::endl;
     std::vector<std::vector<cv::Mat>> test_images;
     std::vector<std::string> test_labels;
-    load_graz2_test(test_images, test_labels);
+    load_graz2_validate(test_images, test_labels);
 
     //load codebook
     std::cout << "Load Codebook" << std::endl;
@@ -141,12 +142,17 @@ int main(int argc, char **argv){
     //TODO: vary these choices to compare performance
     cv::SiftFeatureDetector detector_sift(200); //sift-200 keypoints
     cv::SiftDescriptorExtractor extractor;      //sift128 descriptor
-    CodewordUncertainty hard_quant(codebook, 100.0);   //soft quantization
+
+    CodewordUncertainty soft_quant(codebook, 100.0);   //soft quantization
+    HardAssignment hard_quant(codebook);
+
+    Quantization *quant = &hard_quant;
+
 
     for(int i = 0; i < test_images.size(); i++){
         std::cout << "Compute Vectors for " << test_labels[i] << std::endl;
         std::vector<Histogram> feature_space_vectors;
-        compute_histograms(test_images[i], feature_space_vectors, detector_sift, extractor, hard_quant);
+        compute_histograms(test_images[i], feature_space_vectors, detector_sift, extractor, quant);
 
         std::cout << "Categorize " << test_labels[i] << std::endl;
         std::vector<double> confusion_table(category_centroids.size());

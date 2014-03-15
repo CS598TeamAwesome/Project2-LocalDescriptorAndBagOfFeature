@@ -14,6 +14,7 @@
 #include "BagOfFeatures/Codewords.hpp"
 #include "Quantization/HardAssignment.hpp"
 #include "Quantization/CodewordUncertainty.hpp"
+#include "Quantization/Quantization.hpp"
 #include "Util/Datasets.hpp"
 #include "Util/Distances.hpp"
 #include "Util/Types.hpp"
@@ -31,7 +32,7 @@ void convert_mat_to_vector(const cv::Mat &descriptors, std::vector<std::vector<d
 }
 
 //gets centroid for category from training images
-void train_category(const std::vector<cv::Mat> &samples, Histogram &centroid, const cv::SiftFeatureDetector &detector_sift, const cv::SiftDescriptorExtractor &extractor, CodewordUncertainty &hard_quant){
+void train_category(const std::vector<cv::Mat> &samples, Histogram &centroid, const cv::SiftFeatureDetector &detector_sift, const cv::SiftDescriptorExtractor &extractor, Quantization *quant){
     clock_t start = clock();
     int i = 0;
     for(const cv::Mat& sample : samples){
@@ -55,7 +56,7 @@ void train_category(const std::vector<cv::Mat> &samples, Histogram &centroid, co
 
         //quantize regions -- true BagOfFeatures
         Histogram feature_vector;
-        hard_quant.quantize(unquantized_features, feature_vector);
+        quant->quantize(unquantized_features, feature_vector);
 
         //aggregate
         vector_add(centroid, feature_vector);
@@ -101,13 +102,16 @@ int main(int argc, char **argv){
     //TODO: vary these choices to compare performance
     cv::SiftFeatureDetector detector_sift(200); //sift-200 keypoints
     cv::SiftDescriptorExtractor extractor;      //sift128 descriptor
-    //HardAssignment hard_quant(codebook);        //hard quantization
-    CodewordUncertainty hard_quant(codebook, 100.0);
+
+    HardAssignment hard_quant(codebook);
+    CodewordUncertainty soft_quant(codebook, 100.0);
+
+    Quantization *quant = &soft_quant; //use soft quantization
 
     for(int i = 0; i < training_images.size(); i++){
         std::cout << "Training " << category_labels[i] << std::endl;
         Histogram centroid(codebook.size());
-        train_category(training_images[i],centroid, detector_sift, extractor, hard_quant);
+        train_category(training_images[i],centroid, detector_sift, extractor, quant);
         category_centroids.push_back(centroid);
     }
 
