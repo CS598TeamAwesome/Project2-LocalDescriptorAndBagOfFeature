@@ -24,6 +24,46 @@ using std::vector;
 using namespace LocalDescriptorAndBagOfFeature;
 
 int main(int argc, char **argv){
+    //0. read command line arguments or set default
+    std::string codebook_filename = "codebook.out";
+    std::string output_filename = "centroid_classifier.out";
+    std::string quantization_type = "hard";
+    std::string detector_type = "Dense";
+    std::string descriptor_type = "SIFT";
+
+    std::string error = "Invalid arguments. Usage: [-f output-filename] [-c codebook-filename][-d detector-type][-q quantization-type]";
+    std::string detector_error = "detector-type must be {SIFT, Dense}";
+    std::string quant_error = "quantization-type must be {hard, soft}";
+    for (int i = 1; i < argc; i++) {
+        if (i + 1 != argc){
+            std::string s(argv[i]);
+            if (s.compare("-f") == 0) {
+                output_filename = argv[++i];
+            } else if (s.compare("-c") == 0) {
+                codebook_filename = argv[++i];
+            } else if (s.compare("-d") == 0) {
+                detector_type = argv[++i];
+                if(detector_type.compare("SIFT")!= 0 && detector_type.compare("Dense")!= 0){
+                    std::cout << detector_error;
+                    return(0);
+                }
+            } else if (s.compare("-q") == 0) {
+                quantization_type = argv[++i];
+                if(detector_type.compare("soft")!= 0 && detector_type.compare("hard")!= 0){
+                    std::cout << quant_error;
+                    return(0);
+                }
+            } else {
+                std::cout << error;
+                return(0);
+            }
+        } else {
+            std::cout << error;
+            return(0);
+        }
+    }
+
+    std::cout << "Training Classifier for: detector=" << detector_type << ", descriptor=" << descriptor_type << ", quantization=" << quantization_type << std::endl;
 
     //Load training images
     std::cout << "Load Training Images" << std::endl;
@@ -34,29 +74,31 @@ int main(int argc, char **argv){
     //Load codebook
     std::cout << "Load Codebook" << std::endl;
     std::vector<std::vector<double>> codebook;
-    LoadCodebook("codebook_graz2_400_dense.out", codebook);
+    LoadCodebook(codebook_filename, codebook);
 
     //Train nearest centroid classifier
     std::vector<std::vector<double>> category_centroids;
 
-    //TODO: vary these choices to compare performance
-    cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create("Dense");
-    //detector->set("featureScaleLevels", 1);
-    //detector->set("featureScaleMul", 0.1f);
-    //detector->set("initFeatureScale", 1.f);
-    detector->set("initXyStep", 30);
+    cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create(detector_type);
+    if(detector_type.compare("Dense") == 0){
+        //detector->set("featureScaleLevels", 1);
+        //detector->set("featureScaleMul", 0.1f);
+        //detector->set("initFeatureScale", 1.f);
+        detector->set("initXyStep", 30);
+    } else if(detector_type.compare("SIFT") == 0){
+        detector->set("nFeatures", 200);
+    }
 
-    std::vector<std::vector<cv::KeyPoint>> training_keypoints;
-    detector->detect( training_images, training_keypoints );
-
-
-    cv::SiftFeatureDetector detector_sift(200); //sift-200 keypoints
-    cv::SiftDescriptorExtractor extractor;      //sift128 descriptor
+    cv::SiftDescriptorExtractor extractor; //sift128 descriptor
 
     HardAssignment hard_quant(codebook);
-    CodewordUncertainty soft_quant(codebook, 100.0);
-
-    Quantization *quant = &hard_quant; //use hard quantization
+    CodewordUncertainty soft_quant(codebook, 100.0); //default smoothing value 100.0
+    Quantization *quant;
+    if(quantization_type.compare("hard") == 0){
+        quant = &hard_quant;
+    } else if(quantization_type.compare("soft") == 0){
+        quant = &soft_quant;
+    }
 
     for(int i = 0; i < training_images.size(); i++){
         std::cout << "Training " << category_labels[i] << std::endl;
@@ -66,7 +108,7 @@ int main(int argc, char **argv){
     }
 
     //write classifier to file
-    save_classifier("graz2_centroid_classifier_400_dense.out", category_centroids, category_labels);
+    save_classifier(output_filename, category_centroids, category_labels);
 
     return 0;
 }
