@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 #include "BagOfFeatures/Codewords.hpp"
+#include "Classification/NearestCentroidClassifier.hpp"
 #include "Quantization/CodewordUncertainty.hpp"
 #include "Quantization/HardAssignment.hpp"
 #include "Quantization/Quantization.hpp"
@@ -22,48 +23,10 @@
 using std::vector;
 using namespace LocalDescriptorAndBagOfFeature;
 
-void convert_mat_to_vector(const cv::Mat &descriptors, std::vector<std::vector<double>> &samples){
-    for(int i = 0; i < descriptors.rows; i++){
-        //Mat to vector<double> conversion method as described in the OpenCV Documentation
-        const double* p = descriptors.ptr<double>(i);
-        std::vector<double> vec(p, p + descriptors.cols);
-        samples.push_back(vec);
-    }
-}
-
-//gets a centroid classifier trained from test data
-void load_classifier(std::string filename, std::vector<std::string> &category_labels, std::vector<std::vector<double>> &category_centroids){
-    //load codebook from file
-    std::ifstream filein (filename);
-    std::string s;
-    std::getline(filein, s);
-    std::istringstream sin(s);
-
-    int category_ct;
-    sin >> category_ct;
-
-    for(int i = 0; i < category_ct; i++){
-        getline(filein, s);
-        category_labels.push_back(s);
-
-        getline(filein, s);
-        sin.str(s);
-        sin.clear();
-
-        vector<double> centroid;
-        double d;
-        while(sin >> d){
-            centroid.push_back(d);
-        }
-        category_centroids.push_back(centroid);
-    }
-    filein.close();
-}
-
-void compute_histogram(cv::Mat &sample, Histogram &feature_vector, cv::SiftFeatureDetector &detector_sift, cv::SiftDescriptorExtractor &extractor, Quantization *quant){
+void compute_histogram(cv::Mat &sample, Histogram &feature_vector, cv::Ptr<cv::FeatureDetector> &detector, cv::SiftDescriptorExtractor &extractor, Quantization *quant){
     //detect keypoints
     std::vector<cv::KeyPoint> keypoints;
-    detector_sift.detect( sample, keypoints );
+    detector->detect( sample, keypoints );
 
     //compute descriptor
     cv::Mat descriptor_uchar;
@@ -80,43 +43,14 @@ void compute_histogram(cv::Mat &sample, Histogram &feature_vector, cv::SiftFeatu
     quant->quantize(unquantized_features, feature_vector);
 }
 
-void compute_histograms(std::vector<cv::Mat> &samples, std::vector<Histogram> &feature_vectors, cv::SiftFeatureDetector &detector_sift, cv::SiftDescriptorExtractor &extractor, Quantization *quant){
+void compute_histograms(std::vector<cv::Mat> &samples, std::vector<Histogram> &feature_vectors, cv::Ptr<cv::FeatureDetector> &detector, cv::SiftDescriptorExtractor &extractor, Quantization *quant){
     int i = 0;
     for(cv::Mat& sample : samples){
         i++;
         //std::cout << "computing histogram for image " << i << " of " << samples.size() << std::endl;
         Histogram feature_vector;
-        compute_histogram(sample, feature_vector, detector_sift, extractor, quant);
+        compute_histogram(sample, feature_vector, detector, extractor, quant);
         feature_vectors.push_back(feature_vector);
-    }
-}
-
-//given the feature-space histogram for an image, get the category by finding nearest centroid
-int get_category(const Histogram &feature_vector, const std::vector<std::vector<double>> &category_centroids){
-    int closest_index = 0;
-    double closest_distance = euclidean_distance(category_centroids[0], feature_vector);
-
-    for(int i = 1; i < category_centroids.size(); i++){
-        double distance = euclidean_distance(category_centroids[i], feature_vector);
-        if(distance < closest_distance){
-            closest_index = i;
-            closest_distance = distance;
-        }
-    }
-
-    return closest_index;
-}
-
-//categorize images using nearest centroid and generate confusion table
-void test_category(std::vector<Histogram> &feature_vectors, std::vector<double> &confusion_table, std::vector<std::string> &category_labels, std::vector<std::vector<double>> &category_centroids){
-    for(Histogram &feature_vector : feature_vectors){
-        int cat = get_category(feature_vector, category_centroids);
-        //std::cout << "image " << i << " of " << bikes.size() << ": " << cat << "-" << category_labels[cat] << std::endl;
-        confusion_table[cat]++;
-    }
-
-    for(int i = 0; i < confusion_table.size(); i++){
-        std::cout << category_labels[i] << " " << confusion_table[i] << ", " << (confusion_table[i]/feature_vectors.size()) << std::endl;
     }
 }
 
@@ -131,28 +65,37 @@ int main(int argc, char **argv){
     //load codebook
     std::cout << "Load Codebook" << std::endl;
     std::vector<std::vector<double>> codebook;
-    LoadCodebook("codebook_graz2_800.out", codebook);
+    LoadCodebook("codebook_graz2_400_30.out", codebook);
 
     //load nearest centroid classifier
     std::cout << "Load Classifier" << std::endl;
     std::vector<std::string> category_labels;
     std::vector<std::vector<double>> category_centroids;
-    load_classifier("graz2_centroid_classifier_800.out", category_labels, category_centroids);
+    load_classifier("graz2_centroid_classifier_400_30.out", category_labels, category_centroids);
 
     //TODO: vary these choices to compare performance
     cv::SiftFeatureDetector detector_sift(200); //sift-200 keypoints
     cv::SiftDescriptorExtractor extractor;      //sift128 descriptor
 
+    //cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create("Dense");
+    //detector->set("featureScaleLevels", 1);
+    //detector->set("featureScaleMul", 0.1f);
+    //detector->set("initFeatureScale", 1.f);
+    //detector->set("initXyStep", 30);
+
+    cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create("SIFT");
+    detector->set("nFeatures", 200);
+
     CodewordUncertainty soft_quant(codebook, 100.0);   //soft quantization
     HardAssignment hard_quant(codebook);
 
-    Quantization *quant = &hard_quant;
+    Quantization *quant = &soft_quant;
 
 
     for(int i = 0; i < test_images.size(); i++){
         std::cout << "Compute Vectors for " << test_labels[i] << std::endl;
         std::vector<Histogram> feature_space_vectors;
-        compute_histograms(test_images[i], feature_space_vectors, detector_sift, extractor, quant);
+        compute_histograms(test_images[i], feature_space_vectors, detector, extractor, quant);
 
         std::cout << "Categorize " << test_labels[i] << std::endl;
         std::vector<double> confusion_table(category_centroids.size());

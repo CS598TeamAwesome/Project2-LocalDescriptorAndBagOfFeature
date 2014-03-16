@@ -11,6 +11,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 set(SOURCE)
 set(HEADERS)
 
+add_subdirectory(Classification)
 add_subdirectory(Extraction)
 add_subdirectory(Quantization)
 add_subdirectory(Util)
