@@ -56,41 +56,94 @@ void compute_histograms(std::vector<cv::Mat> &samples, std::vector<Histogram> &f
 
 int main(int argc, char **argv){
 
-    //load test images -- TODO: may want to make some effort to generalize this to other datasets
+    //0. command line arguments
+    std::string codebook_filename = "codebook.out";
+    std::string classifier_filename = "centroid_classifier.out";
+    std::string output_filename = "results.out";
+    std::string quantization_type = "soft";
+    std::string detector_type = "Dense";
+    std::string descriptor_type = "SIFT";
+
+    std::string error = "Invalid arguments. Usage: [-cl classifier-filename] [-c codebook-filename][-d detector-type][-q quantization-type][-f output-filename]";
+    std::string detector_error = "detector-type must be {SIFT, Dense}";
+    std::string quant_error = "quantization-type must be {hard, soft}";
+    for (int i = 1; i < argc; i++) {
+        if (i + 1 != argc){
+            std::string s(argv[i]);
+            if (s.compare("-f") == 0) {
+                output_filename = argv[++i];
+            } else if (s.compare("-c") == 0) {
+                codebook_filename = argv[++i];
+            } else if (s.compare("-cl") == 0) {
+                classifier_filename = argv[++i];
+            } else if (s.compare("-d") == 0) {
+                detector_type = argv[++i];
+                if(detector_type.compare("SIFT")!= 0 && detector_type.compare("Dense")!= 0){
+                    std::cout << detector_error;
+                    return(0);
+                }
+            } else if (s.compare("-q") == 0) {
+                quantization_type = argv[++i];
+                if(detector_type.compare("soft")!= 0 && detector_type.compare("hard")!= 0){
+                    std::cout << quant_error;
+                    return(0);
+                }
+            } else {
+                std::cout << error;
+                return(0);
+            }
+        } else {
+            std::cout << error;
+            return(0);
+        }
+    }
+
+    std::cout << "Performing Categorization for: detector=" << detector_type << ", descriptor=" << descriptor_type << ", quantization=" << quantization_type << std::endl;
+
     std::cout << "Load Test Images" << std::endl;
     std::vector<std::vector<cv::Mat>> test_images;
     std::vector<std::string> test_labels;
-    load_graz2_validate(test_images, test_labels);
+
+    load_graz2_test(test_images, test_labels);
+    //load_graz2_validate(test_images, test_labels);
 
     //load codebook
     std::cout << "Load Codebook" << std::endl;
     std::vector<std::vector<double>> codebook;
-    LoadCodebook("codebook_graz2_400_30.out", codebook);
+    LoadCodebook(codebook_filename, codebook);
 
     //load nearest centroid classifier
     std::cout << "Load Classifier" << std::endl;
     std::vector<std::string> category_labels;
     std::vector<std::vector<double>> category_centroids;
-    load_classifier("graz2_centroid_classifier_400_30.out", category_labels, category_centroids);
+    load_classifier(classifier_filename, category_labels, category_centroids);
 
-    //TODO: vary these choices to compare performance
-    cv::SiftFeatureDetector detector_sift(200); //sift-200 keypoints
-    cv::SiftDescriptorExtractor extractor;      //sift128 descriptor
+    cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create(detector_type);
+    if(detector_type.compare("Dense") == 0){
+        //detector->set("featureScaleLevels", 1);
+        //detector->set("featureScaleMul", 0.1f);
+        //detector->set("initFeatureScale", 1.f);
+        detector->set("initXyStep", 30);
+    } else if(detector_type.compare("SIFT") == 0){
+        detector->set("nFeatures", 200);
+    }
 
-    //cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create("Dense");
-    //detector->set("featureScaleLevels", 1);
-    //detector->set("featureScaleMul", 0.1f);
-    //detector->set("initFeatureScale", 1.f);
-    //detector->set("initXyStep", 30);
+    cv::SiftDescriptorExtractor extractor; //sift128 descriptor
 
-    cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create("SIFT");
-    detector->set("nFeatures", 200);
-
-    CodewordUncertainty soft_quant(codebook, 100.0);   //soft quantization
     HardAssignment hard_quant(codebook);
+    CodewordUncertainty soft_quant(codebook, 100.0); //default smoothing value 100.0
+    Quantization *quant;
+    if(quantization_type.compare("hard") == 0){
+        quant = &hard_quant;
+    } else if(quantization_type.compare("soft") == 0){
+        quant = &soft_quant;
+    }
 
-    Quantization *quant = &soft_quant;
-
+    std::ofstream fileout ("results.out");
+    for(int i = 0; i < test_images.size(); i++){
+        fileout << "\t" << category_labels[i];
+    }
+    fileout << std::endl;
 
     for(int i = 0; i < test_images.size(); i++){
         std::cout << "Compute Vectors for " << test_labels[i] << std::endl;
@@ -100,7 +153,16 @@ int main(int argc, char **argv){
         std::cout << "Categorize " << test_labels[i] << std::endl;
         std::vector<double> confusion_table(category_centroids.size());
         test_category(feature_space_vectors, confusion_table, category_labels, category_centroids);
+
+        fileout << category_labels[i];
+        //write results to file
+        for(int j = 0; j < confusion_table.size(); j++){
+            fileout << "\t" << confusion_table[j]/feature_space_vectors.size();
+            std::cout << category_labels[j] << " " << confusion_table[j] << ", " << (confusion_table[j]/feature_space_vectors.size()) << std::endl;
+        }
+        fileout << std::endl;
     }
+    fileout.close();;
 
     return 0;
 }

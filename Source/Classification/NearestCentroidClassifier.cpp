@@ -66,10 +66,6 @@ void LocalDescriptorAndBagOfFeature::test_category(std::vector<Histogram> &featu
         //std::cout << "image " << i << " of " << bikes.size() << ": " << cat << "-" << category_labels[cat] << std::endl;
         confusion_table[cat]++;
     }
-
-    for(int i = 0; i < confusion_table.size(); i++){
-        std::cout << category_labels[i] << " " << confusion_table[i] << ", " << (confusion_table[i]/feature_vectors.size()) << std::endl;
-    }
 }
 
 void LocalDescriptorAndBagOfFeature::save_classifier(std::string filename, const std::vector<std::vector<double>> &category_centroids, const std::vector<std::string> &category_labels){
