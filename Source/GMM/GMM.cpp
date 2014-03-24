@@ -34,7 +34,7 @@ GMM::GMM(int num, double convergenceThreshold)
     
 }
 
-std::vector<double> GMM::Supervector(const BagOfFeatures &bof) const
+std::vector<double> GMM::Supervector(const BagOfFeatures &bof)
 {
     // Make a matrix out of the input features
     cv::Mat samples(bof[0].size(), bof.size(), CV_64F); // Each column in this matrix is a sample
@@ -50,7 +50,7 @@ std::vector<double> GMM::Supervector(const BagOfFeatures &bof) const
     cv::Mat Z = cv::Mat::zeros(samples.rows, _Gaussians.size(), CV_64F);
     for(int k = 0; k < _Gaussians.size(); k++)
     {
-        cv::Mat &zk = Z.col(k);
+        cv::Mat zk = Z.col(k);
         double sum = 0;
         for(int i = 0; i < samples.cols; i++)
         {
