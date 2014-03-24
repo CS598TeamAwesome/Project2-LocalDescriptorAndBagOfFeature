@@ -11,6 +11,8 @@
 #include <sstream>
 #include <string>
 #include "Util/Clustering.hpp"
+#include "Util/Distances.hpp"
+#include "Util/Datasets.hpp"
 #include "Quantization/HardAssignment.hpp"
 #include "Quantization/CodewordUncertainty.hpp"
 #include "BagOfFeatures/Codewords.hpp"
@@ -18,113 +20,86 @@
 using std::vector;
 using namespace LocalDescriptorAndBagOfFeature;
 
-void load_training_images(std::vector<cv::Mat> &images){
-    std::cout << "Loading input images" << std::endl;
-    clock_t start = clock();
-
-    //GRAZ2 bikes
-    for(int i = 1; i <= 165; i++){
-        //looping over fixed directory path, with expected file names 0.jpg, 1.jpg, etc
-        std::ostringstream convert;
-        if(i < 10)
-            convert << "Train/bike/bike_00" << i << ".bmp";
-        else if(i < 100)
-            convert << "Train/bike/bike_0" << i << ".bmp";
-        else
-            convert << "Train/bike/bike_" << i << ".bmp";
-
-        std::string s = convert.str();
-        cv::Mat img = cv::imread(s);
-        images.push_back(img);
-    }
-
-    std::cout << "... bike images loaded" << std::endl;
-
-    //GRAZ2 cars
-    for(int i = 1; i <= 220; i++){
-        //looping over fixed directory path, with expected file names 0.jpg, 1.jpg, etc
-        std::ostringstream convert;
-        if(i < 10)
-            convert << "Train/cars/carsgraz_00" << i << ".bmp";
-        else if(i < 100)
-            convert << "Train/cars/carsgraz_0" << i << ".bmp";
-        else
-            convert << "Train/cars/carsgraz_" << i << ".bmp";
-
-        std::string s = convert.str();
-        cv::Mat img = cv::imread(s);
-        images.push_back(img);
-    }
-
-    std::cout << "... car images loaded" << std::endl;
-
-    //GRAZ2 none
-    for(int i = 1; i <= 180; i++){
-        //looping over fixed directory path, with expected file names 0.jpg, 1.jpg, etc
-        std::ostringstream convert;
-        if(i < 10)
-            convert << "Train/none/bg_graz_00" << i << ".bmp";
-        else if(i < 100)
-            convert << "Train/none/bg_graz_0" << i << ".bmp";
-        else
-            convert << "Train/none/bg_graz_" << i << ".bmp";
-
-        std::string s = convert.str();
-        cv::Mat img = cv::imread(s);
-        images.push_back(img);
-    }
-
-    std::cout << "... background images loaded" << std::endl;
-
-    //GRAZ2 person
-    for(int i = 1; i <= 111; i++){
-        //looping over fixed directory path, with expected file names 0.jpg, 1.jpg, etc
-        std::ostringstream convert;
-        if(i < 10)
-            convert << "Train/person/person_00" << i << ".bmp";
-        else if(i < 100)
-            convert << "Train/person/person_0" << i << ".bmp";
-        else
-            convert << "Train/person/person_" << i << ".bmp";
-
-        std::string s = convert.str();
-        cv::Mat img = cv::imread(s);
-        images.push_back(img);
-    }
-
-    std::cout << "... people images loaded" << std::endl;
-
-    std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds. - load images" << std::endl;
-
-}
-
-void convert_mat_to_vector(const std::vector<cv::Mat> &descriptors, std::vector<std::vector<double>> &samples){
-    for(const cv::Mat& mat : descriptors){
-        for(int i = 0; i < mat.rows; i++){
-            //Mat to vector<double> conversion method as described in the OpenCV Documentation
-            const double* p = mat.ptr<double>(i);
-            std::vector<double> vec(p, p + mat.cols);
-            samples.push_back(vec);
-        }
-    }
-}
-
 int main(int argc, char **argv){
 
+    //0. read command line arguments or set default
+    int vocabulary_size = 100; //number of clusters for k-means
+    int iteration_cap = 10; //number of iterations for k-means
+    int trials = 1; //number of k-mean trials
+
+    std::string detector_type = "Dense";
+    std::string descriptor_type = "SIFT";
+    std::string output_filename = "Codebook.out";
+
+    std::string error = "Invalid arguments. Usage: [-f output-filename] [-v vocabulary-size][-d detector-type]";
+    std::string detector_error = "detector-type must be {SIFT, Dense}";
+    std::string vocab_error = "vocabulary size must be an integer greater than 0";
+    for (int i = 1; i < argc; i++) {
+        if (i + 1 != argc){
+            std::string s(argv[i]);
+            if (s.compare("-f") == 0) {
+                output_filename = argv[++i];
+            } else if (s.compare("-v") == 0) {
+                vocabulary_size = std::atoi(argv[++i]);
+                if(vocabulary_size <= 0){
+                    std::cout << vocab_error;
+                    return(0);
+                }
+            } else if (s.compare("-d") == 0) {
+                detector_type = argv[++i];
+                if(detector_type.compare("SIFT")!= 0 && detector_type.compare("Dense")!= 0){
+                    std::cout << detector_error;
+                    return(0);
+                }
+            } else {
+                std::cout << error;
+                return(0);
+            }
+        } else {
+            std::cout << error;
+            return(0);
+        }
+    }
+
+    std::cout << "Building Codebook for: vocab-size=" << vocabulary_size << ", detector=" << detector_type << ", descriptor=" << descriptor_type << std::endl;
+
     //1. load training images
+    std::vector<std::vector<cv::Mat>> images_by_category;
+    std::vector<std::string> category_labels;
+    load_graz2_train(images_by_category, category_labels);
+
+    //flatten
     std::vector<cv::Mat> training_images;
-    load_training_images(training_images);
-    std::cout << "Total Count: " << training_images.size() << std::endl;
+    for(std::vector<cv::Mat>& cat : images_by_category){
+        training_images.insert(training_images.end(), cat.begin(), cat.end());
+    }
 
     //2. detect keypoints
     std::cout << "Detecting Keypoints" << std::endl;
     clock_t start = clock();
 
-    std::vector<std::vector<cv::KeyPoint>> training_keypoints;
-    cv::SiftFeatureDetector detector_sift(200);
-    detector_sift.detect( training_images, training_keypoints );
+    cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create(detector_type);
 
-    std::cout << "keypoint vectors: " << training_keypoints.size() << std::endl;
+    //at the moment user cannot set these from the command line
+    if(detector_type.compare("Dense") == 0){
+        //detector->set("featureScaleLevels", 1);
+        //detector->set("featureScaleMul", 0.1f);
+        //detector->set("initFeatureScale", 1.f);
+        detector->set("initXyStep", 30);
+    } else if(detector_type.compare("SIFT") == 0){
+        detector->set("nFeatures", 200);
+    }
+
+
+    std::vector<std::vector<cv::KeyPoint>> training_keypoints;
+    detector->detect( training_images, training_keypoints );
+
+    int size = 0;
+    for(std::vector<cv::KeyPoint>& points : training_keypoints){
+        size += points.size();
+    }
+
+    std::cout << "keypoints: " << size << ", keypoints per image: " << size/training_keypoints.size() << std::endl;
     std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
 
     //3. compute descriptors
@@ -146,33 +121,22 @@ int main(int argc, char **argv){
         }
     }
     std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
+    std::cout << "training descriptors: " << training_descriptors.size() << std::endl;
 
     std::vector<std::vector<double>> samples;
-    convert_mat_to_vector(training_descriptors, samples);
+    for(const cv::Mat& mat : training_descriptors){
+        convert_mat_to_vector(mat, samples);
+    }
 
     //4. cluster to codewords
-    std::cout << "Perform K-means Clustering" << std::endl;
     start = clock();
-    vector<int> labels;
+    std::cout << "Find Codewords" << std::endl;
     vector<vector<double>> centers;
-    vector<int> sizes;
-    double compactness = kmeans(samples, 200, labels, centers, sizes, 30, 1); //single run with random centers
-    //double compactness = kmeans(samples, 400, labels, centers, sizes, 30, 1); //400 words - Xiaoran
-    //double compactness = kmeans(samples, 800, labels, centers, sizes, 30, 1); //800 words - Miao
-    //double compactness = kmeans(samples, 1600, labels, centers, sizes, 30, 1); //1600 words - Cheng
-    std::cout << compactness << std::endl;
+    FindCodewords(samples, vocabulary_size, centers, iteration_cap, trials);
     std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
 
     //5. write codebook to file
-    std::ofstream fileout ("codebook_graz2.out");
-    fileout << centers.size() << std::endl;
-    for(vector<double>& code_vector : centers){
-         for(double& d : code_vector){
-             fileout << d << " ";
-         }
-         fileout << std::endl;
-    }
-    fileout.close();
+    SaveCodebook(output_filename, centers);
 
     return 0;
 }
