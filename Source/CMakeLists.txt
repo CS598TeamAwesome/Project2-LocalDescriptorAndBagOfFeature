@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.6)
 
 project(LocalDescriptorAndBagOfFeature)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
 
 find_package(OpenCV REQUIRED)
 
@@ -17,6 +17,7 @@ add_subdirectory(Quantization)
 add_subdirectory(Util)
 add_subdirectory(BagOfFeatures)
 add_subdirectory(GMM)
+add_subdirectory(SVM)
 
 add_library(LocalDescriptorAndBagOfFeature ${SOURCE} ${HEADERS})
 target_link_libraries(LocalDescriptorAndBagOfFeature ${OpenCV_LIBS})

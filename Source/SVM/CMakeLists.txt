@@ -1,0 +1,11 @@
+set(SOURCE
+    ${SOURCE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/svm.cpp
+    PARENT_SCOPE
+)
+
+set(HEADERS
+    ${HEADERS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/svm.h
+    PARENT_SCOPE
+)
