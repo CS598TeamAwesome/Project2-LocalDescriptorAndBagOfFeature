@@ -121,7 +121,7 @@ void GMM::_Init(const BagOfFeatures &bof)
     // Run k-means on the samples
     std::vector<std::vector<double>> u0;
     std::vector<int> sizes, labels;    
-    kmeans(bof, _Gaussians.size(), labels, u0, sizes, 30);
+    kmeans(bof, _Gaussians.size(), labels, u0, sizes, 15, 50);
     
     // For each gaussian
     for(int k = 0; k < _Gaussians.size(); k++)

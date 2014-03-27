@@ -23,13 +23,14 @@ using namespace LocalDescriptorAndBagOfFeature;
 int main(int argc, char **argv){
 
     //0. read command line arguments or set default
-    int vocabulary_size = 100; //number of clusters for k-means
-    int iteration_cap = 10; //number of iterations for k-means
-    int trials = 1; //number of k-mean trials
+    int vocabulary_size = 5; //number of clusters for k-means
+    int iteration_cap = 15; //number of iterations for k-means
+    int trials = 5; //number of k-mean trials
+    int epsilon = 50; //termination condition for k-means, if between iterations, compactness increases < epsilon, stop
 
     std::string detector_type = "Dense";
     std::string descriptor_type = "SIFT";
-    std::string output_filename = "Codebook.out";
+    std::string output_filename = "Codebook_5.out";
 
     std::string error = "Invalid arguments. Usage: [-f output-filename] [-v vocabulary-size][-d detector-type]";
     std::string detector_error = "detector-type must be {SIFT, Dense}";
@@ -66,6 +67,8 @@ int main(int argc, char **argv){
     //1. load training images
     std::vector<std::vector<cv::Mat>> images_by_category;
     std::vector<std::string> category_labels;
+
+    //load_scene15_train(images_by_category, category_labels);
     load_graz2_train(images_by_category, category_labels);
 
     //flatten
@@ -85,7 +88,7 @@ int main(int argc, char **argv){
         //detector->set("featureScaleLevels", 1);
         //detector->set("featureScaleMul", 0.1f);
         //detector->set("initFeatureScale", 1.f);
-        detector->set("initXyStep", 30);
+        detector->set("initXyStep", 30); //for graz2, 30 gets ~352 per image, for scene15, 15 gets ~314
     } else if(detector_type.compare("SIFT") == 0){
         detector->set("nFeatures", 200);
     }
@@ -132,7 +135,7 @@ int main(int argc, char **argv){
     start = clock();
     std::cout << "Find Codewords" << std::endl;
     vector<vector<double>> centers;
-    FindCodewords(samples, vocabulary_size, centers, iteration_cap, trials);
+    FindCodewords(samples, vocabulary_size, centers, iteration_cap, epsilon, trials);
     std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
 
     //5. write codebook to file

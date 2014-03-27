@@ -5,13 +5,13 @@
 void LocalDescriptorAndBagOfFeature::FindCodewords(const std::vector<std::vector<double> > &features, int numCodeWords, std::vector<std::vector<double> > &codewords)
 {
     std::vector<int> labels, sizes;
-    kmeans(features, numCodeWords, labels, codewords, sizes, 10);
+    kmeans(features, numCodeWords, labels, codewords, sizes, 10, 50);
 }
 
-void LocalDescriptorAndBagOfFeature::FindCodewords(const std::vector<std::vector<double> > &features, int numCodeWords, std::vector<std::vector<double> > &codewords, int iterationCap, int trials)
+void LocalDescriptorAndBagOfFeature::FindCodewords(const std::vector<std::vector<double> > &features, int numCodeWords, std::vector<std::vector<double> > &codewords, int iterationCap, int epsilon, int trials)
 {
     std::vector<int> labels, sizes;
-    int compactness = kmeans(features, numCodeWords, labels, codewords, sizes, iterationCap, trials);
+    int compactness = kmeans(features, numCodeWords, labels, codewords, sizes, iterationCap, epsilon, trials);
     std::cout << "compactness for kmeans: " << compactness << std::endl;
 }
 
