@@ -4,6 +4,7 @@ struct bin_info {
     int size;
     std::vector<double> sum;
     std::vector<double> mean;
+    std::vector<double> old_mean;
 };
 
 /**
@@ -53,7 +54,6 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
 
     bool recompute = true;
     int iteration_ct = 0;
-    double current_compactness = -1;
     while(recompute && iteration_ct < iteration_bound){
         std::cout << "... iteration: " << iteration_ct << std::endl;
         iteration_ct++;
@@ -96,35 +96,30 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
             }
         }
 
-        //4. recompute mean for new centers
+        //4. recompute mean for new centers -- keeping track of how much it moved
+        double max_move = 0;
         for(bin_info& binfo : totals){
+            double sum = 0.0;
             for(int i = 0; i < dim; i++){
-                binfo.mean[i] = binfo.sum[i]/binfo.size;
+                double old_value = binfo.mean[i];
+                double new_value = binfo.sum[i]/binfo.size;
+                binfo.mean[i] = new_value;
+
+                sum += ((old_value - new_value)*(old_value - new_value));
             }
+            if(sum > max_move)
+                max_move = sum;
         }
 
-        //4b. check compactness
-        // -- which we will define as average euclidean distance between each sample and the center of its cluster
-        double new_compactness = 0.0;
-        for(int i = 0; i < sample_ct; i++){
-            double distance = euclidean_distance(input[i], totals[current_bins[i]].mean);
-            new_compactness += distance*distance; //unsure if squaring here is necessary
-        }
-        //some measures also divide the sum by number of samples
-        new_compactness /= sample_ct;
-        std::cout << new_compactness << std::endl;
+        std::cout << max_move << std::endl;
 
-        //check termination condition
-        if(current_compactness > 0 && (current_compactness - new_compactness) < epsilon){
+        //termination condition: no center moved more than epsilon distance, so approaching local minimum
+        if(max_move < epsilon){
             recompute = false;
-        } else {
-            current_compactness = new_compactness;
         }
     }
 
-    //TODO: bound the iteration count or other early termination option
     //std::cout << "kmeans ran for: " << iteration_ct << " iterations" << std::endl;
-
     //5. local minimum reached
 
     //set cluster centers: pull the means out from the vector of bin_infos
