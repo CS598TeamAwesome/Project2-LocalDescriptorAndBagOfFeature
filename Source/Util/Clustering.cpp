@@ -55,7 +55,10 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
     bool recompute = true;
     int iteration_ct = 0;
     while(recompute && iteration_ct < iteration_bound){
-        std::cout << "... iteration: " << iteration_ct << std::endl;
+        //print out iteration count for larger set sizes
+        if(input.size() > 25000){
+            std::cout << input.size() << " samples... iteration: " << iteration_ct << std::endl;
+        }
         iteration_ct++;
 
         //2. compare each sample to each bin mean and note most similar (euclidean distance)
@@ -99,19 +102,27 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
         //4. recompute mean for new centers -- keeping track of how much it moved
         double max_move = 0;
         for(bin_info& binfo : totals){
-            double sum = 0.0;
-            for(int i = 0; i < dim; i++){
-                double old_value = binfo.mean[i];
-                double new_value = binfo.sum[i]/binfo.size;
-                binfo.mean[i] = new_value;
+            if(binfo.size == 0){
+                std::cout << "A bin is empty... re-assign random sample to it" << std::endl;
+                int index = std::rand()%(sample_ct);
+                std::vector<double> v(input[index]);
+                binfo.mean = v;
+            } else {
+                double sum = 0.0;
+                for(int i = 0; i < dim; i++){
+                    double old_value = binfo.mean[i];
+                    double new_value = binfo.sum[i]/binfo.size;
+                    binfo.mean[i] = new_value;
 
-                sum += ((old_value - new_value)*(old_value - new_value));
+                    sum += ((old_value - new_value)*(old_value - new_value));
+                }
+                if(sum > max_move)
+                    max_move = sum;
             }
-            if(sum > max_move)
-                max_move = sum;
         }
 
-        std::cout << max_move << std::endl;
+        if(input.size() > 25000)
+            std::cout << "max center shift: " << max_move << std::endl;
 
         //termination condition: no center moved more than epsilon distance, so approaching local minimum
         if(max_move < epsilon){
@@ -165,12 +176,14 @@ double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<doub
     double best_compactness = kmeans(input, K, best_labels, best_centers, best_sizes, iteration_bound, epsilon); //first trial
 
     for(int i = 1; i < trials; i++){
-        std::cout << "k-means trial#: " << i << std::endl;
+        if(input.size() > 25000)
+            std::cout << "k-means trial#: " << i << std::endl;
         std::vector<std::vector<double>> current_centers;
         std::vector<int> current_labels;
         std::vector<int> current_sizes;
         double current_compactness = kmeans(input, K, current_labels, current_centers, current_sizes, iteration_bound, epsilon);
-        std::cout << ".. current compactness: " << current_compactness;
+        if(input.size() > 25000)
+            std::cout << ".. current compactness: " << current_compactness << std::endl;
 
         if(current_compactness < best_compactness){
             best_compactness = current_compactness;
@@ -199,4 +212,48 @@ double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<doub
     }    
 
     return best_compactness;
+}
+
+//the tree's K and L should be set prior to call, the tree will then be populated by the algorithm
+void LocalDescriptorAndBagOfFeature::hierarchical_kmeans(const std::vector<std::vector<double>> &input, vocabulary_tree &tree){
+    hierarchical_kmeans(input, tree.K, tree.L, tree.root);
+}
+
+void LocalDescriptorAndBagOfFeature::hierarchical_kmeans(const std::vector<std::vector<double>> &input, int K, int L, tree_node &root){
+    //base case no more levels
+    if(L == 0){
+        return;
+    }
+
+    //base case not enough children
+    if(input.size() <= K){
+        for(int i = 0; i < input.size(); i++){
+            std::cout << L << ", " << i << ", " << K << "no children" << std::endl;
+            tree_node child;
+            std::vector<double> v(input[i]);
+            child.value = v;
+        }
+        return;
+    }
+
+    std::vector<std::vector<double>> centers;
+    std::vector<int> labels;
+    std::vector<int> sizes;
+    //iteration cap 15, epsilon 100, trials 1
+    kmeans(input, K, labels, centers, sizes, 15, 100, 1);
+    root.children.clear();
+    for(int i = 0; i < K; i++){
+        std::vector<std::vector<double>> cluster;
+        //build sub-cluster to pass into sub-tree
+        for(int j = 0; j < input.size(); j++){
+            if(labels[j] == i){
+                cluster.push_back(input[j]);
+            }
+        }
+
+        tree_node child;
+        child.value = centers[i];
+        hierarchical_kmeans(cluster, K, L-1, child);
+        root.children.push_back(child);
+    }
 }

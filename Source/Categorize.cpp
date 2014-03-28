@@ -16,6 +16,7 @@
 #include "Quantization/CodewordUncertainty.hpp"
 #include "Quantization/HardAssignment.hpp"
 #include "Quantization/Quantization.hpp"
+#include "Quantization/VocabularyTreeQuantization.hpp"
 #include "Util/Datasets.hpp"
 #include "Util/Distances.hpp"
 #include "Util/Types.hpp"
@@ -57,10 +58,12 @@ void compute_histograms(std::vector<cv::Mat> &samples, std::vector<Histogram> &f
 int main(int argc, char **argv){
 
     //0. command line arguments
-    std::string codebook_filename = "codebook.out";
-    std::string classifier_filename = "centroid_classifier.out";
-    std::string output_filename = "results.out";
-    std::string quantization_type = "soft";
+    std::string codebook_filename = "codebook_graz2_200_dense.out";
+    //std::string classifier_filename = "classifier-graz2-dense-tree-256.out";
+    std::string classifier_filename = "graz2_centroid_classifier_200_dense.out";
+
+    std::string output_filename = "categorization-graz2-dense-200.out";
+    std::string quantization_type = "hard";
     std::string detector_type = "Dense";
     std::string descriptor_type = "SIFT";
 
@@ -84,7 +87,7 @@ int main(int argc, char **argv){
                 }
             } else if (s.compare("-q") == 0) {
                 quantization_type = argv[++i];
-                if(detector_type.compare("soft")!= 0 && detector_type.compare("hard")!= 0){
+                if(quantization_type.compare("soft")!= 0 && quantization_type.compare("hard")!= 0){
                     std::cout << quant_error;
                     return(0);
                 }
@@ -106,6 +109,7 @@ int main(int argc, char **argv){
 
     load_graz2_test(test_images, test_labels);
     //load_graz2_validate(test_images, test_labels);
+    //load_scene15_test(test_images, test_labels);
 
     //load codebook
     std::cout << "Load Codebook" << std::endl;
@@ -123,7 +127,7 @@ int main(int argc, char **argv){
         //detector->set("featureScaleLevels", 1);
         //detector->set("featureScaleMul", 0.1f);
         //detector->set("initFeatureScale", 1.f);
-        detector->set("initXyStep", 30);
+        detector->set("initXyStep", 30); //15 for scene15, 30 for graz2
     } else if(detector_type.compare("SIFT") == 0){
         detector->set("nFeatures", 200);
     }
@@ -132,36 +136,78 @@ int main(int argc, char **argv){
 
     HardAssignment hard_quant(codebook);
     CodewordUncertainty soft_quant(codebook, 100.0); //default smoothing value 100.0
+
+    vocabulary_tree tree;
+    LoadVocabularyTree("vocab_tree.out", tree);
+    VocabularyTreeQuantization tree_quant(tree);
+
     Quantization *quant;
     if(quantization_type.compare("hard") == 0){
         quant = &hard_quant;
     } else if(quantization_type.compare("soft") == 0){
         quant = &soft_quant;
+    } else if(quantization_type.compare("tree") == 0){
+        quant = &tree_quant;
     }
 
-    std::ofstream fileout ("results.out");
+    std::ofstream fileout (output_filename);
     for(int i = 0; i < test_images.size(); i++){
         fileout << "\t" << category_labels[i];
     }
     fileout << std::endl;
 
+    double recall = 0;
+
+    std::vector<std::vector<double>> confusion_table;
     for(int i = 0; i < test_images.size(); i++){
         std::cout << "Compute Vectors for " << test_labels[i] << std::endl;
         std::vector<Histogram> feature_space_vectors;
         compute_histograms(test_images[i], feature_space_vectors, detector, extractor, quant);
 
         std::cout << "Categorize " << test_labels[i] << std::endl;
-        std::vector<double> confusion_table(category_centroids.size());
-        test_category(feature_space_vectors, confusion_table, category_labels, category_centroids);
+        std::vector<double> confusion_row(category_centroids.size());
+        test_category(feature_space_vectors, confusion_row, category_labels, category_centroids);
+
+        recall += confusion_row[i]/feature_space_vectors.size();
+        std::cout << "recall for category: " << confusion_row[i]/feature_space_vectors.size() << std::endl;
 
         fileout << category_labels[i];
         //write results to file
-        for(int j = 0; j < confusion_table.size(); j++){
-            fileout << "\t" << confusion_table[j]/feature_space_vectors.size();
-            std::cout << category_labels[j] << " " << confusion_table[j] << ", " << (confusion_table[j]/feature_space_vectors.size()) << std::endl;
+        for(int j = 0; j < confusion_row.size(); j++){
+            fileout << "\t" << confusion_row[j]/feature_space_vectors.size();
         }
         fileout << std::endl;
+        confusion_table.push_back(confusion_row);
     }
+
+    recall /= test_images.size();
+    fileout << "Overall Recall: " << recall << std::endl;
+    std::cout << "Overall Recall: " << recall << std::endl;
+
+    std::vector<double> predicted_positive_correctly;
+    std::vector<double> predicted_positive;
+    std::vector<double> actual_positive;
+    actual_positive.push_back(100);
+    actual_positive.push_back(100);
+    actual_positive.push_back(100);
+    actual_positive.push_back(100);
+
+    for(int i = 0; i < category_centroids.size(); i++){
+        double positives = 0.0;
+        for(int j = 0; j < test_images.size(); j++){
+            if(i == j){
+                predicted_positive_correctly.push_back(confusion_table[i][j]);
+            }
+            positives += confusion_table[j][i];
+        }
+        predicted_positive.push_back(positives);
+    }
+
+    for(int i = 0; i < test_images.size(); i++){
+        std::cout << "cat: " << i << " precision - " << predicted_positive_correctly[i]/predicted_positive[i] << std::endl;
+        std::cout << "cat: " << i << " recall - " << predicted_positive_correctly[i]/actual_positive[i] << std::endl;
+    }
+
     fileout.close();;
 
     return 0;

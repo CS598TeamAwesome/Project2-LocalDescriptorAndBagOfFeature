@@ -23,10 +23,10 @@ using namespace LocalDescriptorAndBagOfFeature;
 int main(int argc, char **argv){
 
     //0. read command line arguments or set default
-    int vocabulary_size = 5; //number of clusters for k-means
+    int vocabulary_size = 100; //number of clusters for k-means
     int iteration_cap = 15; //number of iterations for k-means
     int trials = 5; //number of k-mean trials
-    int epsilon = 50; //termination condition for k-means, if between iterations, compactness increases < epsilon, stop
+    int epsilon = 100; //termination condition for k-means, if between iterations, compactness increases < epsilon, stop
 
     std::string detector_type = "Dense";
     std::string descriptor_type = "SIFT";
@@ -88,7 +88,7 @@ int main(int argc, char **argv){
         //detector->set("featureScaleLevels", 1);
         //detector->set("featureScaleMul", 0.1f);
         //detector->set("initFeatureScale", 1.f);
-        detector->set("initXyStep", 30); //for graz2, 30 gets ~352 per image, for scene15, 15 gets ~314
+        detector->set("initXyStep", 25); //for graz2, 30 gets ~352 per image, for scene15, 15 gets ~314
     } else if(detector_type.compare("SIFT") == 0){
         detector->set("nFeatures", 200);
     }
@@ -131,6 +131,27 @@ int main(int argc, char **argv){
         convert_mat_to_vector(mat, samples);
     }
 
+    //free mats
+    for(cv::Mat& mat : training_descriptors){
+        mat.release();
+    }
+    //x. build vocabulary tree
+    start = clock();
+    std::cout << "Build Vocabulary Tree" << std::endl;
+    vocabulary_tree tree;
+    tree.K = 5; //branching factor
+    tree.L = 4; //depth
+    hierarchical_kmeans(samples, tree);
+    std::cout << double( clock() - start ) / (double)CLOCKS_PER_SEC<< " seconds." << std::endl;
+
+    //x2. save to file
+    SaveVocabularyTree("vocab_tree_625.out", tree);
+
+    vocabulary_tree loaded_tree;
+    LoadVocabularyTree("vocab_tree_625.out", loaded_tree);
+
+    SaveVocabularyTree("vocab_tree_resave_625.out", loaded_tree);
+/*
     //4. cluster to codewords
     start = clock();
     std::cout << "Find Codewords" << std::endl;
@@ -140,6 +161,6 @@ int main(int argc, char **argv){
 
     //5. write codebook to file
     SaveCodebook(output_filename, centers);
-
+*/
     return 0;
 }

@@ -16,6 +16,7 @@
 #include "Quantization/HardAssignment.hpp"
 #include "Quantization/CodewordUncertainty.hpp"
 #include "Quantization/Quantization.hpp"
+#include "Quantization/VocabularyTreeQuantization.hpp"
 #include "Util/Datasets.hpp"
 #include "Util/Distances.hpp"
 #include "Util/Types.hpp"
@@ -25,9 +26,9 @@ using namespace LocalDescriptorAndBagOfFeature;
 
 int main(int argc, char **argv){
     //0. read command line arguments or set default
-    std::string codebook_filename = "codebook.out";
-    std::string output_filename = "centroid_classifier.out";
-    std::string quantization_type = "hard";
+    std::string codebook_filename = "codebook-scene15-200-dense.out";
+    std::string output_filename = "classifier-graz2-dense-tree-625b.out";
+    std::string quantization_type = "tree";
     std::string detector_type = "Dense";
     std::string descriptor_type = "SIFT";
 
@@ -49,7 +50,7 @@ int main(int argc, char **argv){
                 }
             } else if (s.compare("-q") == 0) {
                 quantization_type = argv[++i];
-                if(detector_type.compare("soft")!= 0 && detector_type.compare("hard")!= 0){
+                if(quantization_type.compare("soft")!= 0 && quantization_type.compare("hard")!= 0){
                     std::cout << quant_error;
                     return(0);
                 }
@@ -70,6 +71,7 @@ int main(int argc, char **argv){
     std::vector<std::vector<cv::Mat>> training_images;
     std::vector<std::string> category_labels;
     load_graz2_train(training_images, category_labels);
+    //load_scene15_train(training_images, category_labels);
 
     //Load codebook
     std::cout << "Load Codebook" << std::endl;
@@ -84,7 +86,7 @@ int main(int argc, char **argv){
         //detector->set("featureScaleLevels", 1);
         //detector->set("featureScaleMul", 0.1f);
         //detector->set("initFeatureScale", 1.f);
-        detector->set("initXyStep", 30);
+        detector->set("initXyStep", 25); //15 for scene15, 30 for graz2
     } else if(detector_type.compare("SIFT") == 0){
         detector->set("nFeatures", 200);
     }
@@ -93,16 +95,28 @@ int main(int argc, char **argv){
 
     HardAssignment hard_quant(codebook);
     CodewordUncertainty soft_quant(codebook, 100.0); //default smoothing value 100.0
+
+    vocabulary_tree tree;
+    LoadVocabularyTree("vocab_tree_625.out", tree);
+    VocabularyTreeQuantization tree_quant(tree);
+
+    int vocabulary_size = 0;
+
     Quantization *quant;
     if(quantization_type.compare("hard") == 0){
         quant = &hard_quant;
+        vocabulary_size = codebook.size();
     } else if(quantization_type.compare("soft") == 0){
         quant = &soft_quant;
+        vocabulary_size = codebook.size();
+    } else if(quantization_type.compare("tree") == 0){
+        quant = &tree_quant;
+        vocabulary_size = tree_quant.size(); //tree size
     }
 
     for(int i = 0; i < training_images.size(); i++){
         std::cout << "Training " << category_labels[i] << std::endl;
-        Histogram centroid(codebook.size());
+        Histogram centroid(vocabulary_size);
         train_category(training_images[i],centroid, detector, extractor, quant);
         category_centroids.push_back(centroid);
     }

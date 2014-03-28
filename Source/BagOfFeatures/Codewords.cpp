@@ -51,3 +51,79 @@ void LocalDescriptorAndBagOfFeature::LoadCodebook(std::string filename, std::vec
     }
     filein.close();
 }
+
+void LocalDescriptorAndBagOfFeature::SaveVocabularyTree(std::ofstream &fileout, const tree_node &root, int K, int L){
+    if(L == 0){
+        return;
+    }
+
+    for(const tree_node& child : root.children){
+         fileout << L << " ";
+         for(const double& d : child.value){
+             fileout << d << " ";
+         }
+         fileout << std::endl;
+         SaveVocabularyTree(fileout, child, K, L-1);
+    }
+}
+
+void LocalDescriptorAndBagOfFeature::SaveVocabularyTree(std::string filename, const vocabulary_tree &tree){
+    std::ofstream fileout (filename);
+    fileout << tree.K << " " << tree.L << std::endl;
+    SaveVocabularyTree(fileout, tree.root, tree.K, tree.L);
+    fileout.close();
+}
+
+void LocalDescriptorAndBagOfFeature::LoadVocabularyTree(std::ifstream &filein, tree_node &root, int K, int L){
+    if(L == 0){
+        return;
+    }
+
+    for(int i = 0; i < K; i++){
+        std::string s;
+        std::getline(filein, s);
+        std::istringstream sin(s);
+
+        int level;
+        sin >> level;
+
+        //TODO: figure out how to handle unbalanced trees
+        if(L != level){
+            std::cout << "level mismatch...catastrophe --- can only handle perfectly balanced trees at the moment" << std::endl;
+            return;
+        }
+
+        tree_node child;
+        std::vector<double> codeword;
+        double d;
+        while(sin >> d){
+            codeword.push_back(d);
+        }
+        child.value = codeword;
+
+        LoadVocabularyTree(filein, child, K, L-1);
+
+        root.children.push_back(child);
+    }
+}
+
+void LocalDescriptorAndBagOfFeature::LoadVocabularyTree(std::string filename, vocabulary_tree &tree){
+    //load vocabulary tree file
+    std::ifstream filein (filename);
+    std::string s;
+    std::getline(filein, s);
+    std::istringstream sin(s);
+
+    int K, L;
+    sin >> K;
+    sin >> L;
+
+    tree_node root;
+    LoadVocabularyTree(filein, root, K, L);
+
+    tree.root = root;
+    tree.K = K;
+    tree.L = L;
+
+    filein.close();
+}
