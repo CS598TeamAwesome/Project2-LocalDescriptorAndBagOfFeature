@@ -81,15 +81,16 @@ void LocalDescriptorAndBagOfFeature::LoadVocabularyTree(std::ifstream &filein, t
 
     for(int i = 0; i < K; i++){
         std::string s;
+        int pos = filein.tellg(); //in case we need to under the getline
         std::getline(filein, s);
         std::istringstream sin(s);
 
         int level;
         sin >> level;
 
-        //TODO: figure out how to handle unbalanced trees
         if(L != level){
-            std::cout << "level mismatch...catastrophe --- can only handle perfectly balanced trees at the moment" << std::endl;
+            //undo the getline and return
+            filein.seekg(pos);
             return;
         }
 
