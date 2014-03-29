@@ -228,7 +228,6 @@ void LocalDescriptorAndBagOfFeature::hierarchical_kmeans(const std::vector<std::
     //base case not enough children
     if(input.size() <= K){
         for(int i = 0; i < input.size(); i++){
-            std::cout << L << ", " << i << ", " << K << "no children" << std::endl;
             tree_node child;
             std::vector<double> v(input[i]);
             child.value = v;
