@@ -13,11 +13,18 @@ HardAssignment::HardAssignment(std::vector<std::vector<double>> codebook):codebo
 
 //take a region and return the index of the nearest codeword
 int HardAssignment::nearest_codeword(const std::vector<double> &region){
-
     int closest_index = 0;
-    double closest_distance = euclidean_distance(codebook[0], region);
+    double closest_distance;
+    if(codebook[0].size() == 0){
+        std::cout << "EMPTY CODEWORD THROW EXCEPTION" << std::endl;
+    } else {
+        closest_distance = euclidean_distance(codebook[0], region);
+    }
 
     for(int i = 1; i < codebook.size(); i++){
+        if(codebook[i].size() == 0){
+            continue;
+        }
         double distance = euclidean_distance(codebook[i], region);
         if(distance < closest_distance){
             closest_index = i;

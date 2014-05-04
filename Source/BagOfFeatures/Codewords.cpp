@@ -2,13 +2,13 @@
 #include <fstream>
 #include "../Util/Clustering.hpp"
 
-void LocalDescriptorAndBagOfFeature::FindCodewords(const std::vector<std::vector<double> > &features, int numCodeWords, std::vector<std::vector<double> > &codewords)
+void LocalDescriptorAndBagOfFeature::FindCodewords(std::vector<std::vector<double> > &features, int numCodeWords, std::vector<std::vector<double> > &codewords)
 {
     std::vector<int> labels, sizes;
     kmeans(features, numCodeWords, labels, codewords, sizes, 10, 50);
 }
 
-void LocalDescriptorAndBagOfFeature::FindCodewords(const std::vector<std::vector<double> > &features, int numCodeWords, std::vector<std::vector<double> > &codewords, int iterationCap, int epsilon, int trials)
+void LocalDescriptorAndBagOfFeature::FindCodewords(std::vector<std::vector<double> > &features, int numCodeWords, std::vector<std::vector<double> > &codewords, int iterationCap, int epsilon, int trials)
 {
     std::vector<int> labels, sizes;
     int compactness = kmeans(features, numCodeWords, labels, codewords, sizes, iterationCap, epsilon, trials);
@@ -47,7 +47,10 @@ void LocalDescriptorAndBagOfFeature::LoadCodebook(std::string filename, std::vec
         while(sin >> d){
             codeword.push_back(d);
         }
-        codebook.push_back(codeword);
+        if(codeword.size() == 0){
+            std::cout << "empty codeword..." << std::endl;
+        } else
+            codebook.push_back(codeword);
     }
     filein.close();
 }
@@ -127,4 +130,61 @@ void LocalDescriptorAndBagOfFeature::LoadVocabularyTree(std::string filename, vo
     tree.L = L;
 
     filein.close();
+}
+
+void LocalDescriptorAndBagOfFeature::FlattenTree(const vocabulary_tree &tree, std::vector<std::vector<double>> &codewords){
+        std::vector<tree_node> to_visit;
+        std::vector<std::pair<int, int>> to_visit_info; //corresponding {level, index} pairs
+        std::vector<std::pair<int, int>> path; //path of {level, index} pairs
+        codewords.clear();
+        codewords.resize(std::pow(tree.K, tree.L));
+
+        to_visit.push_back(tree.root);
+        std::pair<int, int> level_index_pair;
+        level_index_pair.first = 0;
+        level_index_pair.second = 0;
+        to_visit_info.push_back(level_index_pair);
+
+        while(!to_visit.empty()){
+            tree_node current = to_visit.back();
+            to_visit.pop_back();
+            std::pair<int, int> current_info = to_visit_info.back();
+            to_visit_info.pop_back();
+
+            if(path.empty()){
+                path.push_back(current_info);
+            } else {
+                while(!path.empty() && path.back().first >= current_info.first){
+                    path.pop_back();
+                }
+                path.push_back(current_info);
+            }
+
+            if(current.children.empty()){
+                if(current_info.first < tree.L){
+                    std::cout << "POTENTIAL PROBLEM - missing intermediate node???" << std::endl;
+                }
+
+                int index = 0;
+                for(int i = path.size()-1; i > 0; i--){
+                    index *= tree.K;
+                    index += path[i].second;
+                }
+                codewords[index] = current.value;
+/*
+                for(std::pair<int, int> &p : path){
+                    std::cout << p.first << "," << p.second << " ";
+                }
+                std::cout << "= " << index << std::endl;
+*/
+            }
+
+            for(int i = 0; i < current.children.size(); i++){
+                to_visit.push_back(current.children[i]);
+                std::pair<int, int> new_info;
+                new_info.first = current_info.first + 1;
+                new_info.second = i;
+                to_visit_info.push_back(new_info);
+            }
+        }
 }

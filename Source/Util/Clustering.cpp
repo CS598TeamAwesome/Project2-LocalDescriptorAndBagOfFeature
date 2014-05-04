@@ -21,7 +21,7 @@ struct bin_info {
  * - Runs until local minimum is reached.
  * - Uses Euclidean distance
  */
-double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int iteration_bound, int epsilon){
+double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int iteration_bound, int epsilon){
     int sample_ct = input.size();
     int dim = input[0].size(); //dimension of samples, maybe cleaner to pass this in
 
@@ -168,7 +168,7 @@ double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> i
  * @brief LocalDescriptorAndBagOfFeature::kmeans
  *  -- run kmeans for N trials and return the best one
  */
-double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int iteration_bound, int epsilon, int trials){
+double LocalDescriptorAndBagOfFeature::kmeans(std::vector<std::vector<double>> &input, int K, std::vector<int> &labels, std::vector<std::vector<double>> &centers, std::vector<int> &sizes, int iteration_bound, int epsilon, int trials){
     //initialize best results
     std::vector<std::vector<double>> best_centers;
     std::vector<int> best_labels;
@@ -215,11 +215,11 @@ double LocalDescriptorAndBagOfFeature::kmeans(const std::vector<std::vector<doub
 }
 
 //the tree's K and L should be set prior to call, the tree will then be populated by the algorithm
-void LocalDescriptorAndBagOfFeature::hierarchical_kmeans(const std::vector<std::vector<double>> &input, vocabulary_tree &tree){
+void LocalDescriptorAndBagOfFeature::hierarchical_kmeans(std::vector<std::vector<double>> &input, vocabulary_tree &tree){
     hierarchical_kmeans(input, tree.K, tree.L, tree.root);
 }
 
-void LocalDescriptorAndBagOfFeature::hierarchical_kmeans(const std::vector<std::vector<double>> &input, int K, int L, tree_node &root){
+void LocalDescriptorAndBagOfFeature::hierarchical_kmeans(std::vector<std::vector<double>> &input, int K, int L, tree_node &root){
     //base case no more levels
     if(L == 0){
         return;
@@ -227,6 +227,7 @@ void LocalDescriptorAndBagOfFeature::hierarchical_kmeans(const std::vector<std::
 
     //base case not enough children
     if(input.size() <= K){
+        std::cout << "not enough children: " << input.size() << std::endl;
         for(int i = 0; i < input.size(); i++){
             tree_node child;
             std::vector<double> v(input[i]);
@@ -239,7 +240,7 @@ void LocalDescriptorAndBagOfFeature::hierarchical_kmeans(const std::vector<std::
     std::vector<int> labels;
     std::vector<int> sizes;
     //iteration cap 15, epsilon 100, trials 1
-    kmeans(input, K, labels, centers, sizes, 15, 100, 1);
+    kmeans(input, K, labels, centers, sizes, 20, 100, 1);
     root.children.clear();
     for(int i = 0; i < K; i++){
         std::vector<std::vector<double>> cluster;
