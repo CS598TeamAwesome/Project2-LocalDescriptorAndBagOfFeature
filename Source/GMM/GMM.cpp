@@ -116,7 +116,7 @@ void GMM::Train(const FeatureSet &featureSet, int maxIterations)
 }
 
 // Initialzes the GMM using k-means
-void GMM::_Init(const BagOfFeatures &bof)
+void GMM::_Init(BagOfFeatures &bof)
 {
     // Run k-means on the samples
     std::vector<std::vector<double>> u0;
